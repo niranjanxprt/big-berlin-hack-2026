@@ -16,6 +16,7 @@ type StoredCanvasStateRow = {
 function sanitizeNodeData(data: CanvasNodeData): CanvasNodeData {
   const rest = { ...data };
   delete rest.onUpdate;
+  delete rest.onDelete;
   return rest;
 }
 

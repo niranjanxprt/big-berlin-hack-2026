@@ -28,7 +28,6 @@ type FloatingToolbarProps = {
 };
 
 export function FloatingToolbar({
-  currentStep,
   actions: customActions,
   onAddNote,
   onOpenUpload,

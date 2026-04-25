@@ -91,52 +91,57 @@ export async function searchWithTavily(
         },
       },
     ],
-    edges: [],
   };
 
   if (!input.includeImages) {
     return payload;
   }
 
-  const stackItems =
-    json.images?.slice(0, 3).map((image, index) => {
-      const label =
-        typeof image === 'string'
-          ? `image ${index + 1}`
-          : image.description?.slice(0, 20) || `image ${index + 1}`;
-      const tints = [
-        'from-rose-200 to-orange-100',
-        'from-sky-200 to-cyan-100',
-        'from-emerald-200 to-lime-100',
+  const imageItems =
+    json.images?.flatMap((image, index) => {
+      const imageUrl = typeof image === 'string' ? image : image.url;
+      if (!imageUrl) {
+        return [];
+      }
+
+      return [
+        {
+          imageUrl,
+          label:
+            typeof image === 'string'
+              ? `Tavily image ${index + 1}`
+              : image.description?.trim().slice(0, 48) || `Tavily image ${index + 1}`,
+        },
       ];
+    }).slice(0, 3) ?? [];
 
-      return {
-        label,
-        tint: tints[index % tints.length],
-      };
-    }) ?? [];
-
-  if (!stackItems.length) {
+  if (!imageItems.length) {
     return payload;
   }
 
-  payload.items.push({
-    key: 'image-stack',
-    offsetX: 170,
-    offsetY: 48,
-    data: {
-      kind: 'image-stack',
-      badge: 'Selected Images',
-      title: `Image picks for "${input.query}"`,
-      subtitle: 'Live Tavily image results',
-      accent: 'from-slate-100 via-white to-zinc-50',
-      stackItems,
-    },
-  });
-
-  payload.edges?.push({
-    sourceKey: 'research-note',
-    targetKey: 'image-stack',
+  imageItems.forEach((image, index) => {
+    payload.items.push({
+      key: `research-image-${index}`,
+      offsetX: 170 + index * 54,
+      offsetY: 28 + index * 40,
+      data: {
+        kind: 'asset',
+        badge: 'Tavily Image',
+        title: image.label,
+        subtitle: 'Pinned from Tavily image results',
+        accent: 'from-slate-100 via-white to-zinc-50',
+        hideAssetMeta: true,
+        assetItems: [
+          {
+            id: `tavily-image-${index}`,
+            label: image.label,
+            type: 'image',
+            meta: 'Reference image from Tavily',
+            previewUrl: image.imageUrl,
+          },
+        ],
+      },
+    });
   });
 
   return payload;
