@@ -2,18 +2,15 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  addEdge,
   useEdgesState,
   useNodesState,
   useReactFlow,
-  type Connection,
 } from 'reactflow';
 
 import {
   createQuickNoteNode,
   createCanvasNode,
   createUploadedAssetNode,
-  edgeDefaults,
   inferMediaType,
   initialEdges,
   initialNodes,
@@ -47,18 +44,29 @@ type PersistenceStatus =
   | 'error';
 
 export function useCanvasBoard() {
-  const [rawNodes, setNodes, onNodesChange] = useNodesState<CanvasNodeData>(initialNodes);
-  const [edges, setEdges, onEdgesChange] = useEdgesState<CanvasEdge>(initialEdges);
+  const shouldHydrateFromSupabase = isSupabaseConfigured();
+  const [rawNodes, setNodes, onNodesChange] = useNodesState<CanvasNodeData>(
+    shouldHydrateFromSupabase ? [] : initialNodes,
+  );
+  const [edges, setEdges, onEdgesChange] = useEdgesState<CanvasEdge>(
+    shouldHydrateFromSupabase ? [] : initialEdges,
+  );
   const { screenToFlowPosition } = useReactFlow();
   const [persistenceStatus, setPersistenceStatus] = useState<PersistenceStatus>(
-    isSupabaseConfigured() ? 'loading' : 'local-only',
+    shouldHydrateFromSupabase ? 'loading' : 'local-only',
   );
   const [persistenceError, setPersistenceError] = useState<string | null>(null);
+  const [isCanvasReady, setIsCanvasReady] = useState(!shouldHydrateFromSupabase);
   const spawnCountRef = useRef(0);
   const objectUrlsRef = useRef<string[]>([]);
   const hasLoadedRef = useRef(false);
   const saveTimerRef = useRef<number | null>(null);
   const supabase = getSupabaseBrowserClient();
+  const nodesRef = useRef<CanvasNode[]>(shouldHydrateFromSupabase ? [] : initialNodes);
+
+  useEffect(() => {
+    nodesRef.current = rawNodes;
+  }, [rawNodes]);
 
   useEffect(() => {
     const objectUrls = objectUrlsRef.current;
@@ -90,8 +98,9 @@ export function useCanvasBoard() {
         setNodes(
           canvas.nodes?.length ? sanitizeNodesForStorage(canvas.nodes) : initialNodes,
         );
-        setEdges(canvas.edges?.length ? canvas.edges : initialEdges);
+        setEdges([]);
         hasLoadedRef.current = true;
+        setIsCanvasReady(true);
         setPersistenceStatus('saved');
       } catch (error) {
         if (!isActive) {
@@ -99,6 +108,7 @@ export function useCanvasBoard() {
         }
 
         hasLoadedRef.current = true;
+        setIsCanvasReady(true);
         setPersistenceStatus('error');
         setPersistenceError(
           error instanceof Error ? error.message : 'Failed to load canvas',
@@ -170,21 +180,50 @@ export function useCanvasBoard() {
         data: {
           ...node.data,
           onUpdate: (patch: Partial<CanvasNodeData>) => updateNodeData(node.id, patch),
+          onDelete: () => {
+            if (window.confirm('Are you sure you want to delete this item?')) {
+              setNodes((currentNodes) =>
+                currentNodes.filter((currentNode) => currentNode.id !== node.id),
+              );
+            }
+          },
         },
       })),
-    [rawNodes, updateNodeData],
+    [rawNodes, setNodes, updateNodeData],
   );
 
   const getSpawnPosition = useCallback(
     (offsetX = 0, offsetY = 0) => {
-      const step = spawnCountRef.current;
-      const position = screenToFlowPosition({
-        x: window.innerWidth / 2 + offsetX + (step % 3) * 44,
-        y: window.innerHeight / 2 + offsetY + (step % 2) * 36,
-      });
+      const existingNodes = nodesRef.current;
+      const attempts = 24;
+      const width = 360;
+      const height = 360;
+
+      for (let attempt = 0; attempt < attempts; attempt += 1) {
+        const step = spawnCountRef.current + attempt;
+        const candidate = screenToFlowPosition({
+          x: window.innerWidth / 2 + offsetX + (step % 4) * 56,
+          y: window.innerHeight / 2 + offsetY + Math.floor(step / 4) * 56,
+        });
+
+        const overlaps = existingNodes.some((node) => {
+          return (
+            Math.abs(node.position.x - candidate.x) < width &&
+            Math.abs(node.position.y - candidate.y) < height
+          );
+        });
+
+        if (!overlaps) {
+          spawnCountRef.current = step + 1;
+          return candidate;
+        }
+      }
 
       spawnCountRef.current += 1;
-      return position;
+      return screenToFlowPosition({
+        x: window.innerWidth / 2 + offsetX + spawnCountRef.current * 24,
+        y: window.innerHeight / 2 + offsetY + spawnCountRef.current * 24,
+      });
     },
     [screenToFlowPosition],
   );
@@ -213,33 +252,8 @@ export function useCanvasBoard() {
 
       setNodes((currentNodes) => [...currentNodes, ...nextNodes]);
 
-      if (!payload.edges?.length) {
-        return;
-      }
-
-      const nextEdges = payload.edges
-        .map((edge, index) => {
-          const source = keyToId.get(edge.sourceKey);
-          const target = keyToId.get(edge.targetKey);
-
-          if (!source || !target) {
-            return null;
-          }
-
-          return {
-            id: `edge-${source}-${target}-${index}`,
-            source,
-            target,
-            ...edgeDefaults,
-          };
-        })
-        .filter(Boolean) as CanvasEdge[];
-
-      if (nextEdges.length) {
-        setEdges((currentEdges) => [...currentEdges, ...nextEdges]);
-      }
     },
-    [getSpawnPosition, setEdges, setNodes],
+    [getSpawnPosition, setNodes],
   );
 
   const requestCanvasPayload = useCallback(
@@ -253,7 +267,18 @@ export function useCanvasBoard() {
       });
 
       if (!response.ok) {
-        throw new Error(`Request failed for ${path}`);
+        let message = `Request failed for ${path}`;
+
+        try {
+          const errorJson = (await response.json()) as { error?: string };
+          if (errorJson.error) {
+            message = errorJson.error;
+          }
+        } catch {
+          // Ignore JSON parse failures and keep the default message.
+        }
+
+        throw new Error(message);
       }
 
       return (await response.json()) as CanvasInsertionPayload;
@@ -308,11 +333,69 @@ export function useCanvasBoard() {
   );
 
   const addGeneratedContent = useCallback(
-    async (input: GenerateInput) => {
-      const payload = await requestCanvasPayload('/api/generate', input);
-      applyCanvasPayload(payload);
+    (input: GenerateInput) => {
+      const nodeId = `generated-result-${Date.now()}`;
+      const placeholderNode = createCanvasNode(
+        nodeId,
+        getSpawnPosition(120, -20),
+        {
+          kind: 'generation',
+          badge: 'Generating',
+          title:
+            input.type === 'image'
+              ? 'Generating image with Nano Banana'
+              : input.type === 'video'
+                ? 'Generating video with Veo'
+                : 'Preparing animation with Hera',
+          subtitle: 'This node will update automatically',
+          accent: 'from-fuchsia-100 via-white to-rose-50',
+          status: 'generating',
+          statusMessage:
+            input.type === 'image'
+              ? 'Nano Banana is rendering your image...'
+              : input.type === 'video'
+                ? 'Veo is rendering your video...'
+                : 'Hera generation is being prepared...',
+          prompt: input.prompt,
+        },
+      );
+
+      addNode(placeholderNode);
+
+      void (async () => {
+        try {
+          const payload = await requestCanvasPayload('/api/generate', input);
+          const [firstItem, ...otherItems] = payload.items;
+
+          if (!firstItem) {
+            throw new Error('No generated content was returned');
+          }
+
+          updateNodeData(nodeId, {
+            ...firstItem.data,
+            status: 'done',
+          });
+
+          if (otherItems.length || payload.edges?.length) {
+            applyCanvasPayload({
+              items: otherItems,
+              edges: payload.edges,
+            });
+          }
+        } catch (error) {
+          updateNodeData(nodeId, {
+            badge: 'Generation failed',
+            status: 'error',
+            statusMessage:
+              error instanceof Error ? error.message : 'Generation failed',
+            subtitle: 'Check your provider configuration and try again',
+            body:
+              error instanceof Error ? error.message : 'Generation failed',
+          });
+        }
+      })();
     },
-    [applyCanvasPayload, requestCanvasPayload],
+    [addNode, applyCanvasPayload, getSpawnPosition, requestCanvasPayload, updateNodeData],
   );
 
   const addResearchPack = useCallback(
@@ -329,30 +412,6 @@ export function useCanvasBoard() {
       applyCanvasPayload(payload);
     },
     [applyCanvasPayload, requestCanvasPayload],
-  );
-
-  const onConnect = useCallback(
-    (connection: Connection) => {
-      setEdges((currentEdges) =>
-        addEdge(
-          {
-            ...connection,
-            ...edgeDefaults,
-          },
-          currentEdges,
-        ),
-      );
-    },
-    [setEdges],
-  );
-
-  const onEdgeDoubleClick = useCallback(
-    (edgeId: string) => {
-      setEdges((currentEdges) =>
-        currentEdges.filter((edge) => edge.id !== edgeId),
-      );
-    },
-    [setEdges],
   );
 
   const actions = useMemo(
@@ -372,10 +431,9 @@ export function useCanvasBoard() {
     edges,
     onNodesChange,
     onEdgesChange,
-    onConnect,
-    onEdgeDoubleClick,
     actions,
     persistenceStatus,
     persistenceError,
+    isCanvasReady,
   };
 }
