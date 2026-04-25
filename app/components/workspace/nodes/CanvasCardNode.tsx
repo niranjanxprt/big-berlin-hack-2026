@@ -4,6 +4,7 @@ import type { ReactNode } from 'react';
 import Image from 'next/image';
 import {
   Trash2,
+  Download,
   LoaderCircle,
   FileText,
   ImageIcon,
@@ -69,6 +70,42 @@ function NodeGlyph({ kind }: { kind: CanvasNodeData['kind'] }) {
   return <Sparkles className="size-4" />;
 }
 
+function DownloadButton({ url, filename, className }: { url: string; filename: string; className?: string }) {
+  const handleDownload = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    try {
+      const response = await fetch(url);
+      const blob = await response.blob();
+      const blobUrl = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = blobUrl;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(blobUrl);
+    } catch (error) {
+      console.error('Download failed:', error);
+      // Fallback to direct link if fetch fails (e.g. CORS)
+      window.open(url, '_blank');
+    }
+  };
+
+  return (
+    <button
+      type="button"
+      onClick={handleDownload}
+      className={[
+        "nodrag flex size-8 items-center justify-center rounded-full bg-black/40 text-white backdrop-blur-sm transition hover:bg-black/60",
+        className
+      ].filter(Boolean).join(' ')}
+      title="Download"
+    >
+      <Download className="size-4" />
+    </button>
+  );
+}
+
 function PromptCard({
   title,
   icon,
@@ -104,14 +141,22 @@ export function CanvasCardNode({ data, selected }: CanvasCardNodeProps) {
           selected ? 'scale-[1.01] border-slate-400 shadow-[0_24px_60px_-32px_rgba(15,23,42,0.55)]' : '',
         ].join(' ')}
       >
-        {/* Delete */}
-        <button
-          type="button"
-          onClick={data.onDelete}
-          className="nodrag absolute right-3 top-3 z-10 flex size-8 items-center justify-center rounded-full bg-black/40 text-white backdrop-blur-sm transition hover:bg-black/60"
-        >
-          <Trash2 className="size-4" />
-        </button>
+        {/* Actions */}
+        <div className="nodrag absolute right-3 top-3 z-10 flex flex-col gap-2">
+          <button
+            type="button"
+            onClick={data.onDelete}
+            className="flex size-8 items-center justify-center rounded-full bg-black/40 text-white backdrop-blur-sm transition hover:bg-black/60"
+          >
+            <Trash2 className="size-4" />
+          </button>
+          {asset?.previewUrl && (
+            <DownloadButton 
+              url={asset.previewUrl} 
+              filename={asset.label || data.title} 
+            />
+          )}
+        </div>
 
         {/* Media */}
         {asset?.type === 'image' && asset.previewUrl ? (
@@ -260,14 +305,21 @@ export function CanvasCardNode({ data, selected }: CanvasCardNodeProps) {
                 className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm"
               >
                 {item.type === 'image' && item.previewUrl ? (
-                  <Image
-                    src={item.previewUrl}
-                    alt={item.label}
-                    width={640}
-                    height={320}
-                    unoptimized
-                    className="h-40 w-full object-cover"
-                  />
+                  <div className="relative h-40 w-full">
+                    <Image
+                      src={item.previewUrl}
+                      alt={item.label}
+                      width={640}
+                      height={320}
+                      unoptimized
+                      className="h-full w-full object-cover"
+                    />
+                    <DownloadButton
+                      url={item.previewUrl}
+                      filename={item.label}
+                      className="absolute right-2 top-2"
+                    />
+                  </div>
                 ) : null}
 
                 {item.type === 'video' ? (
@@ -279,6 +331,11 @@ export function CanvasCardNode({ data, selected }: CanvasCardNodeProps) {
                         muted
                         playsInline
                         controls
+                      />
+                      <DownloadButton
+                        url={item.previewUrl}
+                        filename={item.label}
+                        className="absolute right-2 top-2 z-10"
                       />
                     </div>
                   ) : (

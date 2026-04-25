@@ -98,19 +98,19 @@ export const contentTemplates: ContentTemplate[] = [
     id: 'hyper-motion',
     title: 'Hyper Motion',
     category: 'Performance',
-    vibe: 'High-energy, fast-cut action',
-    description: 'Adrenaline-driven fast-cut video template for performance ads that demand attention.',
+    vibe: 'High-energy, Japanese Kawaii-Pop',
+    description: 'Vibrant, fast-paced commercial style with tactile textures, playful mascot animations, and maximum visual energy.',
     hooks: [
-      'Hook in the first 0.5 seconds with movement.',
-      'Use rapid cuts synced to a beat.',
-      'End on product + CTA at full energy.',
+      'Start with a tactile macro crunch.',
+      'Use rapid cuts of shared joy and passing product.',
+      'Incorporate playful 2D character overlays.',
     ],
     imagePrompt:
-      'A high-energy product still frame with motion blur, dynamic angle, bold overlaid text, performance ad composition, 9:16.',
+      'High-energy product hero shot in a Japanese pop-art style, vibrant colors, floating chocolate pieces with motion blur, cute 2D chibi mascot character in corner, 9:16.',
     videoPrompt:
-      'A hyper-motion product video with fast cuts, beat-synced editing, bold caption overlays, and maximum visual energy, 9:16.',
+      'High-energy Japanese chocolate-style commercial. 0-3s: Macro shots of [PRODUCT] breaking with a satisfying crunch texture. 3-6s: Rapid cuts of hands passing [PRODUCT] between smiling friends. 6-9s: Playful 2D chibi animated characters dancing around the product. 9-12s: Final hero shot with vibrant typography and colorful flavor particles. Audio: Hyper-pop with exaggerated foley crunches.',
     animationPrompt:
-      'A high-energy looping animation with rapid transitions, kinetic text, and motion-blur product highlights.',
+      'A hyper-vibrant looping animation with 2D mascots jumping over [PRODUCT] and floating flavor icons.',
     assets: [{ type: 'video', src: 'hyper_motion_template.mp4', label: 'Hyper Motion' }],
   },
   {
@@ -136,19 +136,19 @@ export const contentTemplates: ContentTemplate[] = [
     id: 'tutorial',
     title: 'Tutorial / How-To',
     category: 'UGC',
-    vibe: 'Educational, step-by-step',
-    description: 'Structured tutorial format that builds trust through clear explanation and product demonstration.',
+    vibe: 'Authentic, creator-led UGC',
+    description: 'Amateur-style product demonstration in a real-life setting, building trust through genuine reactions.',
     hooks: [
-      'Open with the problem, then immediately show the fix.',
-      'Use numbered steps with on-screen text.',
-      'End with a results-driven CTA.',
+      'Open with a visceral visual hook.',
+      'Show the product texture and application in close-up.',
+      'End with an honest, conversational endorsement.',
     ],
     imagePrompt:
-      'A tutorial step-by-step product image with numbered callouts, clean instructional layout, bright lighting, educational clarity, 9:16.',
+      'Authentic amateur UGC image in a bright bathroom, handheld smartphone look, girl holding [PRODUCT] next to her face, soft natural daylight, white tiles, real-life details, 9:16.',
     videoPrompt:
-      'A how-to tutorial video showing product use in clear steps, screen captions, upbeat pacing, creator-style delivery, 9:16.',
+      'Authentic amateur UGC in a bright bathroom (white tiles, natural daylight). Handheld smartphone look. 0-2s: Visual hook of leaning in with surprised eyes. 2-4s: Quick cut, holding [PRODUCT] to cheek, turning it to catch the light: "I literally cannot believe how good this is." 4-7s: Tight close-up of hands applying [PRODUCT] to skin: "Look how it just melts in—my skin already feels insane." 7-10s: Medium shot showing the glow: "Okay, I\'m obsessed. I\'m not going back." 10-12s: Final close-up holding [PRODUCT] with a genuine smile. Audio: Natural conversational voiceover + room tone, no music.',
     animationPrompt:
-      'A looping tutorial animation with numbered steps, icon callouts, and clean educational motion graphics.',
+      'A refined looping animation showing a close-up of [PRODUCT] being held by hand with a soft natural light sweep.',
     assets: [{ type: 'video', src: 'tutorial_template.mp4', label: 'Tutorial / How-To' }],
   },
   {

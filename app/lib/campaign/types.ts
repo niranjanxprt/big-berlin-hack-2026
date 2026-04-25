@@ -1,4 +1,4 @@
-export type ContentTypeId = 'video' | 'image' | 'animation';
+export type ContentTypeId = 'video' | 'image';
 
 export type AspectRatioId = 'vertical' | 'square' | 'horizontal';
 
@@ -18,4 +18,20 @@ export type PlatformConfig = {
 
 export type ChoiceConfig = {
   platforms: Partial<Record<PlatformId, PlatformConfig>>;
+  productReferenceUrl?: string;
+};
+
+export type GeneratedContentRecord = {
+  id: string;
+  workspace_id: string;
+  platform: string;
+  content_type: ContentTypeId;
+  prompt: string;
+  storage_path: string;
+  public_url: string;
+  mime_type: string;
+  template_id: string | null;
+  audience: string | null;
+  aspect_ratio: string | null;
+  created_at: string;
 };
