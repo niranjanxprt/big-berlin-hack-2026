@@ -1,0 +1,420 @@
+'use client';
+
+import { useCallback, useMemo, useRef, useState } from 'react';
+import {
+  Background,
+  BackgroundVariant,
+  type Edge,
+  Controls,
+  MiniMap,
+  ReactFlow,
+} from 'reactflow';
+
+import { useCanvasBoard } from '../../hooks/useCanvasBoard';
+import { FloatingToolbar } from './FloatingToolbar';
+import { TopNavigation } from './TopNavigation';
+import { WorkspaceActionPanel } from './WorkspaceActionPanel';
+import { CanvasCardNode } from './nodes/CanvasCardNode';
+
+type ActivePanel = 'upload' | 'generate' | 'scrape' | 'template' | null;
+
+function trimLabel(label: string, maxLength = 42) {
+  if (label.length <= maxLength) {
+    return label;
+  }
+
+  const extensionIndex = label.lastIndexOf('.');
+
+  if (extensionIndex <= 0 || extensionIndex === label.length - 1) {
+    return `${label.slice(0, maxLength - 1)}…`;
+  }
+
+  const extension = label.slice(extensionIndex);
+  const base = label.slice(0, extensionIndex);
+  const visibleBaseLength = Math.max(12, maxLength - extension.length - 1);
+
+  return `${base.slice(0, visibleBaseLength)}…${extension}`;
+}
+
+export function WorkspaceCanvas() {
+  const {
+    nodes,
+    edges,
+    onNodesChange,
+    onEdgesChange,
+    onConnect,
+    onEdgeDoubleClick,
+    actions,
+    persistenceStatus,
+    persistenceError,
+  } =
+    useCanvasBoard();
+  const [activePanel, setActivePanel] = useState<ActivePanel>(null);
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+  const [isUploading, setIsUploading] = useState(false);
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [isSearching, setIsSearching] = useState(false);
+  const [isApplyingTemplate, setIsApplyingTemplate] = useState(false);
+  const [generateType, setGenerateType] = useState<'image' | 'video' | 'animation'>('image');
+  const [generatePrompt, setGeneratePrompt] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [includeImages, setIncludeImages] = useState(true);
+  const [templateProduct, setTemplateProduct] = useState('');
+  const [templateVibe, setTemplateVibe] = useState('editorial minimal');
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+
+  const nodeTypes = useMemo(
+    () => ({
+      'canvas-card': CanvasCardNode,
+    }),
+    [],
+  );
+
+  const closePanel = () => {
+    setActivePanel(null);
+  };
+  const handlePaneClick = useCallback(() => setActivePanel(null), []);
+  const handleEdgeDoubleClick = useCallback(
+    (_event: React.MouseEvent, edge: Edge) => {
+      onEdgeDoubleClick(edge.id);
+    },
+    [onEdgeDoubleClick],
+  );
+
+  const handleUploadSubmit = async () => {
+    if (!selectedFiles.length) {
+      return;
+    }
+
+    setIsUploading(true);
+
+    try {
+      await actions.addOwnContent(selectedFiles);
+      setSelectedFiles([]);
+
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+
+      closePanel();
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  const handleGenerateSubmit = async () => {
+    if (!generatePrompt.trim()) {
+      return;
+    }
+
+    setIsGenerating(true);
+
+    try {
+      await actions.addGeneratedContent({
+        type: generateType,
+        prompt: generatePrompt.trim(),
+      });
+      setGeneratePrompt('');
+      closePanel();
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
+  const handleScrapeSubmit = async () => {
+    if (!searchQuery.trim()) {
+      return;
+    }
+
+    setIsSearching(true);
+
+    try {
+      await actions.addResearchPack({
+        query: searchQuery.trim(),
+        includeImages,
+      });
+      setSearchQuery('');
+      setIncludeImages(true);
+      closePanel();
+    } finally {
+      setIsSearching(false);
+    }
+  };
+
+  const handleTemplateSubmit = async () => {
+    setIsApplyingTemplate(true);
+
+    try {
+      await actions.addTemplate({
+        product: templateProduct.trim(),
+        vibe: templateVibe,
+      });
+      closePanel();
+    } finally {
+      setIsApplyingTemplate(false);
+    }
+  };
+
+  return (
+    <div className="relative h-[100dvh] overflow-hidden bg-[radial-gradient(circle_at_top,_rgba(240,249,255,0.95),_rgba(248,250,252,1)_45%,_rgba(255,255,255,1)_100%)] text-slate-900">
+      <TopNavigation
+        persistenceStatus={persistenceStatus}
+        persistenceError={persistenceError}
+      />
+
+      <main className="h-full pt-24">
+        <ReactFlow
+          nodes={nodes}
+          edges={edges}
+          nodeTypes={nodeTypes}
+          onNodesChange={onNodesChange}
+          onEdgesChange={onEdgesChange}
+          onConnect={onConnect}
+          onEdgeDoubleClick={handleEdgeDoubleClick}
+          onPaneClick={handlePaneClick}
+          deleteKeyCode={['Backspace', 'Delete']}
+          edgesFocusable
+          edgesUpdatable={false}
+          connectOnClick={false}
+          connectionRadius={40}
+          noWheelClassName="nowheel"
+          fitView
+          fitViewOptions={{ padding: 0.2 }}
+          defaultEdgeOptions={{
+            animated: true,
+            style: { stroke: '#94a3b8', strokeWidth: 1.5 },
+          }}
+          proOptions={{ hideAttribution: true }}
+          className="!bg-transparent"
+        >
+          <Background
+            variant={BackgroundVariant.Dots}
+            gap={20}
+            size={1.2}
+            color="#cbd5e1"
+          />
+          <Controls
+            position="top-right"
+            className="!top-4 !right-4 !rounded-2xl !border !border-slate-200 !bg-white/90 !shadow-lg !backdrop-blur"
+          />
+          <MiniMap
+            pannable
+            zoomable
+            nodeColor={() => '#e2e8f0'}
+            className="!bottom-24 !rounded-2xl !border !border-slate-200 !bg-white/90 !shadow-lg !backdrop-blur"
+          />
+        </ReactFlow>
+      </main>
+
+      {activePanel === 'upload' ? (
+        <WorkspaceActionPanel
+          title="Upload From Your Machine"
+          description="Choose images, videos, or documents. Each file will appear as its own asset on the canvas."
+          onClose={closePanel}
+        >
+          <div className="flex flex-col gap-4">
+            <input
+              ref={fileInputRef}
+              type="file"
+              multiple
+              accept="image/*,video/*,.pdf,.doc,.docx,.ppt,.pptx,.txt"
+              onChange={(event) =>
+                setSelectedFiles(Array.from(event.target.files ?? []))
+              }
+              className="rounded-2xl border border-dashed border-slate-300 bg-slate-50 px-4 py-5 text-sm text-slate-600 file:mr-4 file:rounded-full file:border-0 file:bg-slate-900 file:px-4 file:py-2 file:text-sm file:font-medium file:text-white"
+            />
+            {selectedFiles.length ? (
+              <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3">
+                <p className="mb-2 text-sm font-medium text-slate-900">
+                  Files ready for the canvas
+                </p>
+                <div className="flex flex-col gap-2">
+                  {selectedFiles.map((file) => (
+                    <div
+                      key={`${file.name}-${file.lastModified}`}
+                      className="truncate rounded-2xl bg-white px-3 py-2 text-sm text-slate-600"
+                      title={file.name}
+                    >
+                      {trimLabel(file.name)}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : null}
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={handleUploadSubmit}
+                className="rounded-full bg-slate-900 px-4 py-3 text-sm font-medium text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50"
+                disabled={!selectedFiles.length || isUploading}
+              >
+                {isUploading ? 'Uploading...' : 'Add to canvas'}
+              </button>
+              <button
+                type="button"
+                onClick={closePanel}
+                className="rounded-full border border-slate-200 bg-white px-4 py-3 text-sm font-medium text-slate-600 transition hover:text-slate-900"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </WorkspaceActionPanel>
+      ) : null}
+
+      {activePanel === 'generate' ? (
+        <WorkspaceActionPanel
+          title="Generate Content"
+          description="Choose what to create, describe it with a prompt, and a mock result will be placed on the canvas."
+          onClose={closePanel}
+        >
+          <div className="flex flex-col gap-4">
+            <label className="flex flex-col gap-2">
+              <span className="text-sm font-medium text-slate-700">Output type</span>
+              <select
+                value={generateType}
+                onChange={(event) =>
+                  setGenerateType(event.target.value as 'image' | 'video' | 'animation')
+                }
+                className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-700 outline-none"
+              >
+                <option value="image">Image with Nanobanana</option>
+                <option value="video">Video with Veo</option>
+                <option value="animation">Animation with Hera</option>
+              </select>
+            </label>
+            <label className="flex flex-col gap-2">
+              <span className="text-sm font-medium text-slate-700">Prompt</span>
+              <textarea
+                value={generatePrompt}
+                onChange={(event) => setGeneratePrompt(event.target.value)}
+                placeholder="A premium hero visual for a smart bottle on a marble desk at sunrise..."
+                className="min-h-28 resize-none rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-700 outline-none"
+              />
+            </label>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={handleGenerateSubmit}
+                className="rounded-full bg-slate-900 px-4 py-3 text-sm font-medium text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50"
+                disabled={!generatePrompt.trim() || isGenerating}
+              >
+                {isGenerating ? 'Generating...' : 'Generate mock result'}
+              </button>
+              <button
+                type="button"
+                onClick={closePanel}
+                className="rounded-full border border-slate-200 bg-white px-4 py-3 text-sm font-medium text-slate-600 transition hover:text-slate-900"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </WorkspaceActionPanel>
+      ) : null}
+
+      {activePanel === 'scrape' ? (
+        <WorkspaceActionPanel
+          title="Scrape With Tavily"
+          description="Enter what you want to research. The board will add a search result note and optionally an image stack."
+          onClose={closePanel}
+        >
+          <div className="flex flex-col gap-4">
+            <label className="flex flex-col gap-2">
+              <span className="text-sm font-medium text-slate-700">What should Tavily look for?</span>
+              <textarea
+                value={searchQuery}
+                onChange={(event) => setSearchQuery(event.target.value)}
+                placeholder="Best landing pages for wellness product launches"
+                className="min-h-24 resize-none rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-700 outline-none"
+              />
+            </label>
+            <label className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-700">
+              <input
+                type="checkbox"
+                checked={includeImages}
+                onChange={(event) => setIncludeImages(event.target.checked)}
+                className="size-4 rounded border-slate-300"
+              />
+              Include images and add them as a stack on the canvas
+            </label>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={handleScrapeSubmit}
+                className="rounded-full bg-slate-900 px-4 py-3 text-sm font-medium text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50"
+                disabled={!searchQuery.trim() || isSearching}
+              >
+                {isSearching ? 'Searching...' : 'Add Tavily output'}
+              </button>
+              <button
+                type="button"
+                onClick={closePanel}
+                className="rounded-full border border-slate-200 bg-white px-4 py-3 text-sm font-medium text-slate-600 transition hover:text-slate-900"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </WorkspaceActionPanel>
+      ) : null}
+
+      {activePanel === 'template' ? (
+        <WorkspaceActionPanel
+          title="Choose A Template"
+          description="Pick a product and a vibe. The canvas will get a reusable content direction card."
+          onClose={closePanel}
+        >
+          <div className="flex flex-col gap-4">
+            <label className="flex flex-col gap-2">
+              <span className="text-sm font-medium text-slate-700">Product</span>
+              <input
+                value={templateProduct}
+                onChange={(event) => setTemplateProduct(event.target.value)}
+                placeholder="Smart water bottle"
+                className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-700 outline-none"
+              />
+            </label>
+            <label className="flex flex-col gap-2">
+              <span className="text-sm font-medium text-slate-700">Style / vibe</span>
+              <select
+                value={templateVibe}
+                onChange={(event) => setTemplateVibe(event.target.value)}
+                className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-700 outline-none"
+              >
+                <option value="editorial minimal">Editorial minimal</option>
+                <option value="performance ugc">Performance UGC</option>
+                <option value="playful launch">Playful launch</option>
+              </select>
+            </label>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={handleTemplateSubmit}
+                className="rounded-full bg-slate-900 px-4 py-3 text-sm font-medium text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50"
+                disabled={isApplyingTemplate}
+              >
+                {isApplyingTemplate ? 'Applying...' : 'Add template'}
+              </button>
+              <button
+                type="button"
+                onClick={closePanel}
+                className="rounded-full border border-slate-200 bg-white px-4 py-3 text-sm font-medium text-slate-600 transition hover:text-slate-900"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </WorkspaceActionPanel>
+      ) : null}
+
+      <FloatingToolbar
+        onAddNote={actions.addQuickNote}
+        onOpenUpload={() => setActivePanel('upload')}
+        onOpenGenerate={() => setActivePanel('generate')}
+        onOpenScrape={() => setActivePanel('scrape')}
+        onOpenTemplate={() => setActivePanel('template')}
+      />
+    </div>
+  );
+}
