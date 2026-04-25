@@ -85,5 +85,6 @@ export type WorkspaceContextPack = {
     aspectRatios: string[];
     rawChoiceConfig: Record<string, unknown> | null;
   };
+  productReferenceUrl?: string;
   sourceArtifacts: ExtractedContextArtifact[];
 };

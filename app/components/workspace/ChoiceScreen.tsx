@@ -1,10 +1,12 @@
 'use client';
 
 import { startTransition, useState, useId, useEffect, useRef } from 'react';
-import { Video, Image as ImageIcon, Film, ArrowRight, CircleCheck } from 'lucide-react';
+import { Video, Image as ImageIcon, Film, ArrowRight, CircleCheck, Upload, Trash2, LoaderCircle } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { contentTemplates } from '../../lib/templates/catalog';
 import { getTemplateAssetUrl } from '../../lib/templates/assets';
+import { uploadCanvasAsset } from '../../lib/canvas/persistence';
+import { getSupabaseBrowserClient } from '../../lib/supabase/client';
 
 // --- SVG Platform Logos ---
 
@@ -82,7 +84,7 @@ function YouTubeLogo({ size = 24 }: { size?: number }) {
 
 // --- Types ---
 
-type ContentTypeId = 'video' | 'image' | 'animation';
+type ContentTypeId = 'video' | 'image';
 
 export type AspectRatioId = 'vertical' | 'square' | 'horizontal';
 
@@ -98,7 +100,7 @@ const ASPECT_RATIOS: {
   { id: 'horizontal', label: 'Horizontal',  ratio: '16:9', w: 16, h: 9  },
 ];
 
-const VIDEO_CONTENT_TYPES: ContentTypeId[] = ['video', 'animation'];
+const VIDEO_CONTENT_TYPES: ContentTypeId[] = ['video'];
 
 type PlatformConfig = {
   audience: string;
@@ -127,14 +129,13 @@ const AUDIENCES = [
 const CONTENT_TYPES: { id: ContentTypeId; name: string; Icon: LucideIcon }[] = [
   { id: 'video', name: 'Short Video', Icon: Video },
   { id: 'image', name: 'Image', Icon: ImageIcon },
-  { id: 'animation', name: 'Animation', Icon: Film },
 ];
 
 const DEFAULT_PLATFORM_CONFIG = (): PlatformConfig => ({
   audience: 'genz',
   contentTypes: ['video'],
   templates: {},
-  aspectRatios: { video: 'vertical', animation: 'vertical' },
+  aspectRatios: { video: 'vertical', image: 'square' },
 });
 
 export type ChoiceConfig = {
@@ -229,8 +230,8 @@ function PlatformSection({
     if (removing) {
       delete newTemplates[typeId];
       delete newAspectRatios[typeId];
-    } else if (VIDEO_CONTENT_TYPES.includes(typeId) && !newAspectRatios[typeId]) {
-      newAspectRatios[typeId] = 'vertical';
+    } else if (!newAspectRatios[typeId]) {
+      newAspectRatios[typeId] = typeId === 'video' ? 'vertical' : 'square';
     }
     onChange({ ...config, contentTypes: next, templates: newTemplates, aspectRatios: newAspectRatios });
   };
@@ -312,52 +313,49 @@ function PlatformSection({
       {/* Aspect ratio + template selection per content type */}
       {config.contentTypes.map((typeId) => {
         const contentType = CONTENT_TYPES.find((c) => c.id === typeId)!;
-        const isVideoType = VIDEO_CONTENT_TYPES.includes(typeId);
-        const activeRatio = config.aspectRatios?.[typeId] ?? 'vertical';
+        const activeRatio = config.aspectRatios?.[typeId] ?? (typeId === 'video' ? 'vertical' : 'square');
 
         return (
           <div key={typeId} className="mb-5 last:mb-0">
-            {/* Aspect ratio selector — video and animation only */}
-            {isVideoType && (
-              <div className="mb-4">
-                <p className="mb-3 text-[11px] font-bold uppercase tracking-widest text-slate-400">
-                  Format — {contentType.name}
-                </p>
-                <div className="flex gap-3">
-                  {ASPECT_RATIOS.map((ar) => {
-                    const selected = activeRatio === ar.id;
-                    // Scale preview box: max height 48px
-                    const scale = 48 / Math.max(ar.w, ar.h);
-                    const boxW = Math.round(ar.w * scale);
-                    const boxH = Math.round(ar.h * scale);
-                    return (
-                      <button
-                        key={ar.id}
-                        onClick={() => selectAspectRatio(typeId, ar.id)}
+            {/* Aspect ratio selector */}
+            <div className="mb-4">
+              <p className="mb-3 text-[11px] font-bold uppercase tracking-widest text-slate-400">
+                Format — {contentType.name}
+              </p>
+              <div className="flex gap-3">
+                {ASPECT_RATIOS.map((ar) => {
+                  const selected = activeRatio === ar.id;
+                  // Scale preview box: max height 48px
+                  const scale = 48 / Math.max(ar.w, ar.h);
+                  const boxW = Math.round(ar.w * scale);
+                  const boxH = Math.round(ar.h * scale);
+                  return (
+                    <button
+                      key={ar.id}
+                      onClick={() => selectAspectRatio(typeId, ar.id)}
+                      className={[
+                        'flex flex-col items-center gap-2 rounded-2xl border px-4 py-3 text-xs font-semibold transition-all duration-200',
+                        selected
+                          ? 'border-slate-900 bg-slate-900 text-white'
+                          : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300',
+                      ].join(' ')}
+                    >
+                      <span
                         className={[
-                          'flex flex-col items-center gap-2 rounded-2xl border px-4 py-3 text-xs font-semibold transition-all duration-200',
-                          selected
-                            ? 'border-slate-900 bg-slate-900 text-white'
-                            : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300',
+                          'rounded border-2 flex-shrink-0',
+                          selected ? 'border-white/60' : 'border-slate-300',
                         ].join(' ')}
-                      >
-                        <span
-                          className={[
-                            'rounded border-2 flex-shrink-0',
-                            selected ? 'border-white/60' : 'border-slate-300',
-                          ].join(' ')}
-                          style={{ width: boxW, height: boxH }}
-                        />
-                        <span>{ar.label}</span>
-                        <span className={selected ? 'text-white/50' : 'text-slate-400'}>
-                          {ar.ratio}
-                        </span>
-                      </button>
-                    );
-                  })}
-                </div>
+                        style={{ width: boxW, height: boxH }}
+                      />
+                      <span>{ar.label}</span>
+                      <span className={selected ? 'text-white/50' : 'text-slate-400'}>
+                        {ar.ratio}
+                      </span>
+                    </button>
+                  );
+                })}
               </div>
-            )}
+            </div>
 
             <p className="mb-3 text-[11px] font-bold uppercase tracking-widest text-slate-400">
               Template for {contentType.name}
@@ -392,22 +390,22 @@ export function ChoiceScreen({ onComplete, initialConfig, onConfigChange }: Choi
   const [platformConfigs, setPlatformConfigs] = useState<Partial<Record<PlatformId, PlatformConfig>>>({
     instagram: DEFAULT_PLATFORM_CONFIG(),
   });
+  const [productReferenceUrl, setProductReferenceUrl] = useState<string | undefined>(initialConfig?.productReferenceUrl);
+  const [isUploading, setIsUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Hydrate from persisted config when it arrives async
   const hydratedRef = useRef(false);
   useEffect(() => {
     if (!initialConfig || hydratedRef.current) return;
     const ids = Object.keys(initialConfig.platforms) as PlatformId[];
-    if (ids.length === 0) return;
+    if (ids.length === 0 && !initialConfig.productReferenceUrl) return;
     hydratedRef.current = true;
-    const timeoutId = window.setTimeout(() => {
-      startTransition(() => {
-        setSelectedPlatforms(ids);
-        setPlatformConfigs(initialConfig.platforms);
-      });
-    }, 0);
-
-    return () => window.clearTimeout(timeoutId);
+    startTransition(() => {
+      if (ids.length > 0) setSelectedPlatforms(ids);
+      setPlatformConfigs(initialConfig.platforms);
+      setProductReferenceUrl(initialConfig.productReferenceUrl);
+    });
   }, [initialConfig]);
 
   // Notify parent of every change for live persistence
@@ -419,8 +417,26 @@ export function ChoiceScreen({ onComplete, initialConfig, onConfigChange }: Choi
     for (const id of selectedPlatforms) {
       result[id] = platformConfigs[id] ?? DEFAULT_PLATFORM_CONFIG();
     }
-    onConfigChange({ platforms: result });
-  }, [selectedPlatforms, platformConfigs, onConfigChange]);
+    onConfigChange({ platforms: result, productReferenceUrl });
+  }, [selectedPlatforms, platformConfigs, productReferenceUrl, onConfigChange]);
+
+  const handleProductImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const supabase = getSupabaseBrowserClient();
+    if (!supabase) return;
+
+    setIsUploading(true);
+    try {
+      const { publicUrl } = await uploadCanvasAsset(supabase, file, 0);
+      setProductReferenceUrl(publicUrl);
+    } catch (error) {
+      console.error('Failed to upload product reference:', error);
+    } finally {
+      setIsUploading(false);
+    }
+  };
 
   const togglePlatform = (id: PlatformId) => {
     if (selectedPlatforms.includes(id)) {
@@ -444,11 +460,61 @@ export function ChoiceScreen({ onComplete, initialConfig, onConfigChange }: Choi
     for (const id of selectedPlatforms) {
       result[id] = platformConfigs[id] ?? DEFAULT_PLATFORM_CONFIG();
     }
-    onComplete({ platforms: result });
+    onComplete({ platforms: result, productReferenceUrl });
   };
 
   return (
     <div className="mx-auto max-w-3xl px-6 pb-32 pt-8">
+      {/* Product Reference Section */}
+      <div className="mb-10">
+        <h2 className="mb-1 text-lg font-bold text-slate-900">Your Product</h2>
+        <p className="mb-5 text-sm text-slate-500">
+          Upload a high-quality photo of your product. This will be used as a visual anchor for all generations.
+        </p>
+        
+        <div 
+          className="group relative flex aspect-video w-full cursor-pointer flex-col items-center justify-center overflow-hidden rounded-[28px] border-2 border-dashed border-slate-200 bg-slate-50 transition hover:border-slate-300 hover:bg-slate-100/50"
+          onClick={() => !productReferenceUrl && fileInputRef.current?.click()}
+        >
+          {productReferenceUrl ? (
+            <>
+              <img 
+                src={productReferenceUrl} 
+                className="h-full w-full object-cover" 
+                alt="Product Reference" 
+              />
+              <div className="absolute inset-0 flex items-center justify-center bg-black/20 opacity-0 transition group-hover:opacity-100">
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setProductReferenceUrl(undefined);
+                  }}
+                  className="flex size-12 items-center justify-center rounded-full bg-white text-red-500 shadow-xl transition hover:scale-110"
+                >
+                  <Trash2 className="size-5" />
+                </button>
+              </div>
+            </>
+          ) : (
+            <div className="flex flex-col items-center gap-3">
+              <div className="flex size-12 items-center justify-center rounded-full bg-white text-slate-400 shadow-sm">
+                {isUploading ? <LoaderCircle className="size-5 animate-spin" /> : <Upload className="size-5" />}
+              </div>
+              <p className="text-sm font-semibold text-slate-600">
+                {isUploading ? 'Uploading your product...' : 'Click to upload product photo'}
+              </p>
+            </div>
+          )}
+          <input 
+            type="file" 
+            ref={fileInputRef} 
+            className="hidden" 
+            accept="image/*" 
+            onChange={handleProductImageUpload} 
+          />
+        </div>
+      </div>
+
       {/* Platform Selector */}
       <div className="mb-8">
         <h2 className="mb-1 text-lg font-bold text-slate-900">Where do you want to publish?</h2>

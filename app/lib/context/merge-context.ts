@@ -269,6 +269,7 @@ export function mergeContextArtifacts(input: {
       aspectRatios,
       rawChoiceConfig: Object.keys(rawPlatforms).length > 0 ? rawPlatforms : null,
     },
+    productReferenceUrl: (choiceArtifact?.rawMetadata as any)?.productReferenceUrl,
     sourceArtifacts: input.artifacts,
   };
 }
