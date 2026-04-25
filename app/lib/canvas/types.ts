@@ -16,6 +16,10 @@ export type CanvasAssetItem = {
   type: MediaType;
   meta: string;
   previewUrl?: string;
+  storagePath?: string;
+  mimeType?: string;
+  sizeBytes?: number;
+  lastModified?: number;
   tint?: string;
 };
 
@@ -31,8 +35,15 @@ export type CanvasNodeData = {
   subtitle: string;
   accent: string;
   templateId?: string;
+  templateCategory?: string;
+  templateDescription?: string;
   status?: 'generating' | 'error' | 'done';
   statusMessage?: string;
+  generationType?: 'image' | 'video' | 'animation';
+  generationProvider?: string;
+  aspectRatio?: string;
+  targetPlatform?: string;
+  negativePrompt?: string;
   editable?: boolean;
   body?: string;
   bullets?: string[];

@@ -28,6 +28,7 @@ export function WorkspaceActionPanel({
             <X className="size-3.5" />
           </button>
         </div>
+        <p className="mb-4 px-2 text-sm leading-6 text-slate-500">{description}</p>
         {children}
       </div>
     </div>

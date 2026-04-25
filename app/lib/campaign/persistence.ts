@@ -1,7 +1,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 
 import { CAMPAIGN_CONFIG_ID, CAMPAIGN_CONFIG_TABLE } from '../supabase/constants';
-import type { ChoiceConfig } from '../../components/workspace/ChoiceScreen';
+import type { ChoiceConfig } from './types';
 
 type StoredCampaignConfigRow = {
   id: string;

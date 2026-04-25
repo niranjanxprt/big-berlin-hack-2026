@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useMemo, useRef, useState } from 'react';
-import { Film, FolderOpen, ImageIcon, Sparkles, Video, Plus, Paperclip, Globe, Library } from 'lucide-react';
+import { ImageIcon, Sparkles, Video, Plus, Paperclip, Globe, Library, RefreshCw, ChevronDown, ChevronUp } from 'lucide-react';
 import {
   Background,
   BackgroundVariant,
@@ -19,6 +19,7 @@ import { TemplateGallery } from './TemplateGallery';
 import { ChoiceScreen } from './ChoiceScreen';
 import { CanvasCardNode } from './nodes/CanvasCardNode';
 import { contentTemplates } from '../../lib/templates/catalog';
+import type { WorkspaceContextPack } from '../../lib/context/workspace-context';
 
 type ActivePanel = 'upload' | 'generate' | 'scrape' | 'template' | null;
 
@@ -57,12 +58,15 @@ export function WorkspaceCanvas() {
   const [isSearching, setIsSearching] = useState(false);
   const [isApplyingTemplate, setIsApplyingTemplate] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
+  const [contextError, setContextError] = useState<string | null>(null);
+  const [isRefreshingContext, setIsRefreshingContext] = useState(false);
+  const [showContextDebug, setShowContextDebug] = useState(false);
+  const [contextPack, setContextPack] = useState<WorkspaceContextPack | null>(null);
   const [generateType, setGenerateType] = useState<'image' | 'video' | 'animation'>('image');
   const [generatePrompt, setGeneratePrompt] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [includeImages, setIncludeImages] = useState(true);
   const { config: persistedChoiceConfig, updateConfig: persistChoiceConfig } = useChoiceConfig();
-  const [contentConfig, setContentConfig] = useState<any>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const nodeTypes = useMemo(
@@ -152,16 +156,6 @@ export function WorkspaceCanvas() {
     }
   };
 
-  const handleTemplateSync = async () => {
-    setIsApplyingTemplate(true);
-    try {
-      await new Promise((resolve) => setTimeout(resolve, 1500));
-      console.log('Syncing templates from Supabase...');
-    } finally {
-      setIsApplyingTemplate(false);
-    }
-  };
-
   const handleTemplateSubmit = async (templateId: string) => {
     setIsApplyingTemplate(true);
     setActionError(null);
@@ -175,6 +169,61 @@ export function WorkspaceCanvas() {
       setIsApplyingTemplate(false);
     }
   };
+
+  const handleRefreshContext = useCallback(async () => {
+    setIsRefreshingContext(true);
+    setContextError(null);
+
+    try {
+      const response = await fetch('/api/context/pack', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ workspaceId: 'main' }),
+      });
+
+      const json = (await response.json()) as {
+        contextPack?: WorkspaceContextPack;
+        extraction?: {
+          reused: number;
+          generated: number;
+          failed: number;
+        };
+        error?: string;
+      };
+
+      if (!response.ok || !json.contextPack) {
+        throw new Error(json.error ?? 'Failed to regenerate context');
+      }
+
+      setContextPack(json.contextPack);
+    } catch (error) {
+      setContextError(error instanceof Error ? error.message : 'Failed to regenerate context');
+    } finally {
+      setIsRefreshingContext(false);
+    }
+  }, []);
+
+  const handleDownloadContext = useCallback(() => {
+    if (!contextPack) {
+      return;
+    }
+
+    const blob = new Blob([JSON.stringify(contextPack, null, 2)], {
+      type: 'application/json',
+    });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement('a');
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+
+    anchor.href = url;
+    anchor.download = `workspace-context-${timestamp}.json`;
+    document.body.appendChild(anchor);
+    anchor.click();
+    document.body.removeChild(anchor);
+    URL.revokeObjectURL(url);
+  }, [contextPack]);
 
   return (
     <div className="relative h-[100dvh] overflow-hidden bg-[radial-gradient(circle_at_top,_rgba(240,249,255,0.95),_rgba(248,250,252,1)_45%,_rgba(255,255,255,1)_100%)] text-slate-900">
@@ -246,7 +295,6 @@ export function WorkspaceCanvas() {
             onConfigChange={persistChoiceConfig}
             onComplete={(config) => {
               persistChoiceConfig(config);
-              setContentConfig(config);
               setCurrentStep(3);
             }}
           />
@@ -259,11 +307,168 @@ export function WorkspaceCanvas() {
             currentStep === 3 ? 'translate-x-0 opacity-100' : 'translate-x-full opacity-0 pointer-events-none'
           ].join(' ')}
         >
-          <div className="flex h-full items-center justify-center">
-            <div className="text-center">
-              <h2 className="text-2xl font-bold text-slate-300">Generating View</h2>
-              <p className="text-slate-400">Content coming soon...</p>
-            </div>
+          <div className="mx-auto flex h-full w-full max-w-6xl flex-col gap-6 overflow-y-auto px-6 pb-32 pt-2">
+            <section className="rounded-[32px] border border-slate-200 bg-white/90 p-6 shadow-[0_24px_70px_-40px_rgba(15,23,42,0.35)] backdrop-blur-xl">
+              <div className="flex min-h-[380px] items-center justify-center rounded-[28px] border border-slate-200 bg-[radial-gradient(circle_at_top,_rgba(255,255,255,0.95),_rgba(248,250,252,0.98)_55%,_rgba(241,245,249,1)_100%)] px-6 py-10">
+                <div className="flex max-w-xl flex-col items-center text-center">
+                  <div className="mb-4 rounded-full border border-slate-200 bg-white/90 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.18em] text-slate-500 shadow-sm">
+                    Generating
+                  </div>
+                  <h3 className="text-3xl font-bold tracking-tight text-slate-950">
+                    Generation output will live here
+                  </h3>
+                  <p className="mt-4 text-sm leading-7 text-slate-600">
+                    This page will later focus on actual image and video generation results. The internal context inspector is hidden unless you explicitly open it.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => setShowContextDebug((current) => !current)}
+                    className="mt-8 inline-flex items-center gap-3 rounded-full bg-slate-950 px-7 py-4 text-base font-medium text-white shadow-[0_18px_40px_-20px_rgba(15,23,42,0.6)] transition hover:bg-slate-800"
+                  >
+                    {showContextDebug ? (
+                      <>
+                        <ChevronUp className="size-5" />
+                        Hide Context Inspector
+                      </>
+                    ) : (
+                      <>
+                        <ChevronDown className="size-5" />
+                        Open Context Inspector
+                      </>
+                    )}
+                  </button>
+                </div>
+              </div>
+            </section>
+
+            <section className="rounded-[32px] border border-slate-200 bg-slate-950 p-6 text-slate-100 shadow-[0_24px_70px_-40px_rgba(15,23,42,0.5)]">
+              <div className="mb-4 flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-xs font-bold uppercase tracking-[0.18em] text-slate-400">
+                    Context Inspector
+                  </p>
+                  <p className="mt-2 text-sm text-slate-300">
+                    Hidden by default. Expand only when you want to verify the internal structured context.
+                  </p>
+                </div>
+                {showContextDebug ? (
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={handleDownloadContext}
+                      className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm text-slate-200 transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-50"
+                      disabled={!contextPack || isRefreshingContext}
+                    >
+                      Download JSON
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleRefreshContext}
+                      className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm text-slate-200 transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-50"
+                      disabled={isRefreshingContext}
+                    >
+                      <RefreshCw className={['size-4', isRefreshingContext ? 'animate-spin' : ''].join(' ')} />
+                      {isRefreshingContext ? 'Regenerating...' : 'Regenerate context'}
+                    </button>
+                  </div>
+                ) : null}
+              </div>
+
+              {!showContextDebug ? (
+                <div className="flex min-h-[120px] items-center justify-center rounded-2xl border border-dashed border-white/10 bg-black/10 p-6 text-center text-sm text-slate-400">
+                  Inspector hidden. Expand it only when you want to audit the extracted context structure.
+                </div>
+              ) : contextPack ? (
+                <div className="grid gap-4">
+                  <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+                    <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
+                      <p className="text-xs font-bold uppercase tracking-[0.18em] text-slate-400">Notes</p>
+                      <p className="mt-3 text-3xl font-bold text-white">{contextPack.notes.length}</p>
+                    </div>
+                    <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
+                      <p className="text-xs font-bold uppercase tracking-[0.18em] text-slate-400">Templates</p>
+                      <p className="mt-3 text-3xl font-bold text-white">{contextPack.templates.length}</p>
+                    </div>
+                    <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
+                      <p className="text-xs font-bold uppercase tracking-[0.18em] text-slate-400">Documents</p>
+                      <p className="mt-3 text-3xl font-bold text-white">{contextPack.documents.length}</p>
+                    </div>
+                    <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
+                      <p className="text-xs font-bold uppercase tracking-[0.18em] text-slate-400">Media</p>
+                      <p className="mt-3 text-3xl font-bold text-white">{contextPack.images.length + contextPack.videos.length}</p>
+                    </div>
+                  </div>
+
+                  <div className="grid gap-4 xl:grid-cols-[1.1fr_0.9fr]">
+                    <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
+                      <p className="text-xs font-bold uppercase tracking-[0.18em] text-slate-400">Overview</p>
+                      <p className="mt-3 text-sm leading-7 text-slate-200">{contextPack.overview.summary}</p>
+                      <div className="mt-4 grid gap-4 md:grid-cols-2">
+                        <div>
+                          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Key Facts</p>
+                          <ul className="mt-3 space-y-2 text-sm text-slate-200">
+                            {contextPack.baseContext.keyFacts.slice(0, 8).map((item) => (
+                              <li key={item} className="rounded-xl border border-white/10 bg-white/5 px-3 py-2">{item}</li>
+                            ))}
+                          </ul>
+                        </div>
+                        <div>
+                          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Style Signals</p>
+                          <ul className="mt-3 space-y-2 text-sm text-slate-200">
+                            {contextPack.baseContext.styleSignals.slice(0, 8).map((item) => (
+                              <li key={item} className="rounded-xl border border-white/10 bg-white/5 px-3 py-2">{item}</li>
+                            ))}
+                          </ul>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
+                      <p className="text-xs font-bold uppercase tracking-[0.18em] text-slate-400">Generation Intent</p>
+                      <div className="mt-4 space-y-3 text-sm text-slate-200">
+                        <div className="rounded-xl border border-white/10 bg-white/5 px-3 py-2"><span className="text-slate-400">Platforms:</span> {contextPack.generationIntent.platforms.join(', ') || 'None'}</div>
+                        <div className="rounded-xl border border-white/10 bg-white/5 px-3 py-2"><span className="text-slate-400">Requested types:</span> {contextPack.generationIntent.requestedContentTypes.join(', ') || 'None'}</div>
+                        <div className="rounded-xl border border-white/10 bg-white/5 px-3 py-2"><span className="text-slate-400">Selected templates:</span> {contextPack.generationIntent.selectedTemplates.join(', ') || 'None'}</div>
+                        <div className="rounded-xl border border-white/10 bg-white/5 px-3 py-2"><span className="text-slate-400">Audiences:</span> {contextPack.generationIntent.audiences.join(', ') || 'None'}</div>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="grid gap-4 xl:grid-cols-[1.2fr_0.8fr]">
+                    <div className="grid gap-4">
+                      <pre className="max-h-[12vh] overflow-auto rounded-2xl border border-white/10 bg-black/20 p-3 text-xs leading-6 text-slate-200">{JSON.stringify({ overview: contextPack.overview }, null, 2)}</pre>
+                      <pre className="max-h-[12vh] overflow-auto rounded-2xl border border-white/10 bg-black/20 p-3 text-xs leading-6 text-slate-200">{JSON.stringify({ notes: contextPack.notes }, null, 2)}</pre>
+                      <pre className="max-h-[12vh] overflow-auto rounded-2xl border border-white/10 bg-black/20 p-3 text-xs leading-6 text-slate-200">{JSON.stringify({ templates: contextPack.templates }, null, 2)}</pre>
+                      <pre className="max-h-[12vh] overflow-auto rounded-2xl border border-white/10 bg-black/20 p-3 text-xs leading-6 text-slate-200">{JSON.stringify({ documents: contextPack.documents }, null, 2)}</pre>
+                      <pre className="max-h-[12vh] overflow-auto rounded-2xl border border-white/10 bg-black/20 p-3 text-xs leading-6 text-slate-200">{JSON.stringify({ images: contextPack.images, videos: contextPack.videos }, null, 2)}</pre>
+                      <pre className="max-h-[12vh] overflow-auto rounded-2xl border border-white/10 bg-black/20 p-3 text-xs leading-6 text-slate-200">{JSON.stringify({ generatedContent: contextPack.generatedContent }, null, 2)}</pre>
+                    </div>
+                    <div className="grid gap-4">
+                      <pre className="max-h-[18vh] overflow-auto rounded-2xl border border-white/10 bg-black/20 p-3 text-xs leading-6 text-slate-200">{JSON.stringify({ baseContext: contextPack.baseContext }, null, 2)}</pre>
+                      <pre className="max-h-[18vh] overflow-auto rounded-2xl border border-white/10 bg-black/20 p-3 text-xs leading-6 text-slate-200">{JSON.stringify({ generationIntent: contextPack.generationIntent }, null, 2)}</pre>
+                      <pre className="max-h-[24vh] overflow-auto rounded-2xl border border-white/10 bg-black/20 p-3 text-xs leading-6 text-slate-200">
+                        {JSON.stringify(
+                          contextPack.sourceArtifacts.map((artifact) => ({
+                            sourceNodeId: artifact.sourceNodeId,
+                            sourceType: artifact.sourceType,
+                            title: artifact.title,
+                            summary: artifact.summary,
+                          })),
+                          null,
+                          2,
+                        )}
+                      </pre>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex min-h-[220px] items-center justify-center rounded-2xl border border-dashed border-white/10 bg-black/10 p-6 text-center text-sm text-slate-400">
+                  {contextError ? (
+                    <span className="text-red-300">{contextError}</span>
+                  ) : (
+                    'Open the inspector and regenerate the context when you want to verify the latest extracted structure.'
+                  )}
+                </div>
+              )}
+            </section>
           </div>
         </div>
       </main>
@@ -480,10 +685,12 @@ export function WorkspaceCanvas() {
         </WorkspaceActionPanel>
       ) : null}
 
-      <FloatingToolbar
-        currentStep={currentStep}
-        actions={currentStep === 1 ? brainstormActions : choiceActions}
-      />
+      {currentStep !== 3 ? (
+        <FloatingToolbar
+          currentStep={currentStep}
+          actions={currentStep === 1 ? brainstormActions : choiceActions}
+        />
+      ) : null}
     </div>
   );
 }

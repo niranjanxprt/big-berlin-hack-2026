@@ -66,6 +66,14 @@ export function createMockGenerationPayload(
                 : 'Hera mock output',
           accent: 'from-fuchsia-100 via-white to-rose-50',
           status: 'done',
+          generationType: input.type,
+          generationProvider:
+            input.type === 'image'
+              ? 'nanobanana'
+              : input.type === 'video'
+                ? 'veo'
+                : 'hera',
+          aspectRatio: '16:9',
           prompt: input.prompt,
           hideAssetMeta: true,
           assetItems: [
@@ -132,27 +140,85 @@ export function createMockSearchPayload(input: TavilyInput): CanvasInsertionPayl
         },
       },
       {
-        key: 'image-stack',
+        key: 'research-image-0',
         offsetX: 170,
         offsetY: 48,
         data: {
-          kind: 'image-stack',
-          badge: 'Selected Images',
-          title: `Image picks for "${input.query}"`,
+          kind: 'asset',
+          badge: 'Tavily Image',
+          title: 'hero lifestyle',
           subtitle: 'Pinned from search results',
           accent: 'from-slate-100 via-white to-zinc-50',
-          stackItems: [
-            { label: 'hero lifestyle', tint: 'from-rose-200 to-orange-100' },
-            { label: 'product detail', tint: 'from-sky-200 to-cyan-100' },
-            { label: 'workspace scene', tint: 'from-emerald-200 to-lime-100' },
+          hideAssetMeta: true,
+          assetItems: [
+            {
+              id: 'tavily-image-0',
+              label: 'hero lifestyle',
+              type: 'image',
+              meta: 'Reference image from Tavily',
+              previewUrl: createPreviewDataUrl(
+                'LIFESTYLE SHOT',
+                'Tavily image',
+                '#fecdd3',
+                '#fdba74',
+              ),
+            },
           ],
         },
       },
-    ],
-    edges: [
       {
-        sourceKey: 'research-note',
-        targetKey: 'image-stack',
+        key: 'research-image-1',
+        offsetX: 224,
+        offsetY: 88,
+        data: {
+          kind: 'asset',
+          badge: 'Tavily Image',
+          title: 'product detail',
+          subtitle: 'Pinned from search results',
+          accent: 'from-slate-100 via-white to-zinc-50',
+          hideAssetMeta: true,
+          assetItems: [
+            {
+              id: 'tavily-image-1',
+              label: 'product detail',
+              type: 'image',
+              meta: 'Reference image from Tavily',
+              previewUrl: createPreviewDataUrl(
+                'PRODUCT DETAIL',
+                'Tavily image',
+                '#bae6fd',
+                '#67e8f9',
+              ),
+            },
+          ],
+        },
+      },
+      {
+        key: 'research-image-2',
+        offsetX: 278,
+        offsetY: 128,
+        data: {
+          kind: 'asset',
+          badge: 'Tavily Image',
+          title: 'workspace scene',
+          subtitle: 'Pinned from search results',
+          accent: 'from-slate-100 via-white to-zinc-50',
+          hideAssetMeta: true,
+          assetItems: [
+            {
+              id: 'tavily-image-2',
+              label: 'workspace scene',
+              type: 'image',
+              meta: 'Reference image from Tavily',
+              previewUrl: createPreviewDataUrl(
+                'WORKSPACE SCENE',
+                'Tavily image',
+                '#bbf7d0',
+                '#d9f99d',
+              ),
+            },
+          ],
+        },
       },
     ],
   };
@@ -180,6 +246,13 @@ export function createMockTemplatePayload(
           subtitle: template.vibe,
           accent: 'from-indigo-100 via-white to-sky-50',
           templateId: template.id,
+          templateCategory: template.category,
+          templateDescription: template.description,
+          body: template.description,
+          bullets: template.hooks,
+          imagePrompt: template.imagePrompt,
+          videoPrompt: template.videoPrompt,
+          animationPrompt: template.animationPrompt,
           hideAssetMeta: true,
           assetItems: template.assets?.map((asset, index) => ({
             id: `${template.id}-asset-${index}`,

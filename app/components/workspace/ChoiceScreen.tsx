@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useId, useEffect, useRef } from 'react';
+import { startTransition, useState, useId, useEffect, useRef } from 'react';
 import { Video, Image as ImageIcon, Film, ArrowRight, CircleCheck } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { contentTemplates } from '../../lib/templates/catalog';
@@ -400,8 +400,14 @@ export function ChoiceScreen({ onComplete, initialConfig, onConfigChange }: Choi
     const ids = Object.keys(initialConfig.platforms) as PlatformId[];
     if (ids.length === 0) return;
     hydratedRef.current = true;
-    setSelectedPlatforms(ids);
-    setPlatformConfigs(initialConfig.platforms);
+    const timeoutId = window.setTimeout(() => {
+      startTransition(() => {
+        setSelectedPlatforms(ids);
+        setPlatformConfigs(initialConfig.platforms);
+      });
+    }, 0);
+
+    return () => window.clearTimeout(timeoutId);
   }, [initialConfig]);
 
   // Notify parent of every change for live persistence

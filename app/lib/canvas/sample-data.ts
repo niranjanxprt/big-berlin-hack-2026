@@ -83,6 +83,9 @@ export const initialNodes: CanvasNode[] = [
     subtitle: 'Prompted output preview',
     accent: 'from-emerald-100 via-white to-lime-50',
     status: 'done',
+    generationType: 'video',
+    generationProvider: 'veo',
+    aspectRatio: '16:9',
     prompt:
       'Generate a 20-second reel covering 3 content myths founders still believe, with fast cuts and bold captions.',
     hideAssetMeta: true,

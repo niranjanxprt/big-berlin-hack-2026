@@ -298,10 +298,12 @@ export function useCanvasBoard() {
       for (const [index, file] of files.entries()) {
         const type = inferMediaType(file);
         let previewUrl: string | undefined;
+        let storagePath: string | undefined;
 
         if (supabase) {
           const uploadedAsset = await uploadCanvasAsset(supabase, file, index);
           previewUrl = uploadedAsset.publicUrl;
+          storagePath = uploadedAsset.path;
         } else if (type === 'image' || type === 'video') {
           previewUrl = URL.createObjectURL(file);
           objectUrlsRef.current.push(previewUrl);
@@ -316,6 +318,10 @@ export function useCanvasBoard() {
               ? `${Math.max(1, Math.round(file.size / 1024))} KB document`
               : `${Math.max(1, Math.round(file.size / 1024 / 1024))} MB ${type}`,
           previewUrl,
+          storagePath,
+          mimeType: file.type,
+          sizeBytes: file.size,
+          lastModified: file.lastModified,
         };
 
         nextNodes.push(
@@ -350,6 +356,14 @@ export function useCanvasBoard() {
           subtitle: 'This node will update automatically',
           accent: 'from-fuchsia-100 via-white to-rose-50',
           status: 'generating',
+          generationType: input.type,
+          generationProvider:
+            input.type === 'image'
+              ? 'nanobanana'
+              : input.type === 'video'
+                ? 'veo'
+                : 'hera',
+          aspectRatio: '16:9',
           statusMessage:
             input.type === 'image'
               ? 'Nano Banana is rendering your image...'

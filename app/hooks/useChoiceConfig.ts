@@ -2,8 +2,8 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 
-import type { ChoiceConfig } from '../components/workspace/ChoiceScreen';
 import { loadCampaignConfig, saveCampaignConfig } from '../lib/campaign/persistence';
+import type { ChoiceConfig } from '../lib/campaign/types';
 import { getSupabaseBrowserClient, isSupabaseConfigured } from '../lib/supabase/client';
 
 type PersistenceStatus = 'local-only' | 'loading' | 'ready' | 'saving' | 'saved' | 'error';

@@ -69,6 +69,9 @@ function createGenerationPayload(input: {
           subtitle: input.subtitle,
           accent: 'from-fuchsia-100 via-white to-rose-50',
           status: 'done',
+          generationType: input.type,
+          generationProvider: input.type === 'image' ? 'nanobanana' : 'veo',
+          aspectRatio: '16:9',
           prompt: input.prompt,
           hideAssetMeta: true,
           assetItems: [
