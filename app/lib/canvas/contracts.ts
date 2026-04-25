@@ -11,8 +11,7 @@ export type TavilyInput = {
 };
 
 export type TemplateInput = {
-  product: string;
-  vibe: string;
+  templateId: string;
 };
 
 export type CanvasInsertionItem = {
