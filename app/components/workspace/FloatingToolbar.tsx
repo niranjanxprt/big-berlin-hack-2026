@@ -17,27 +17,34 @@ type ToolbarAction = {
 };
 
 type FloatingToolbarProps = {
-  onAddNote: () => void;
-  onOpenUpload: () => void;
-  onOpenGenerate: () => void;
-  onOpenScrape: () => void;
-  onOpenTemplate: () => void;
+  currentStep: number;
+  actions?: ToolbarAction[];
+  // Keep original props for backward compatibility or simple usage
+  onAddNote?: () => void;
+  onOpenUpload?: () => void;
+  onOpenGenerate?: () => void;
+  onOpenScrape?: () => void;
+  onOpenTemplate?: () => void;
 };
 
 export function FloatingToolbar({
+  currentStep,
+  actions: customActions,
   onAddNote,
   onOpenUpload,
   onOpenGenerate,
   onOpenScrape,
   onOpenTemplate,
 }: FloatingToolbarProps) {
-  const actions: ToolbarAction[] = [
-    { label: 'Add note', icon: Plus, onClick: onAddNote, primary: true },
-    { label: 'Own content', icon: Paperclip, onClick: onOpenUpload },
-    { label: 'Generate', icon: Sparkles, onClick: onOpenGenerate },
-    { label: 'Tavily scrape', icon: Globe, onClick: onOpenScrape },
-    { label: 'Templates', icon: Library, onClick: onOpenTemplate },
+  const defaultActions: ToolbarAction[] = [
+    { label: 'Add note', icon: Plus, onClick: onAddNote || (() => {}), primary: true },
+    { label: 'Own content', icon: Paperclip, onClick: onOpenUpload || (() => {}) },
+    { label: 'Generate', icon: Sparkles, onClick: onOpenGenerate || (() => {}) },
+    { label: 'Tavily scrape', icon: Globe, onClick: onOpenScrape || (() => {}) },
+    { label: 'Templates', icon: Library, onClick: onOpenTemplate || (() => {}) },
   ];
+
+  const actions = customActions || defaultActions;
 
   return (
     <div className="pointer-events-none fixed inset-x-0 bottom-0 z-20 flex justify-center px-4 pb-6">
