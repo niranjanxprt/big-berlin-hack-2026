@@ -20,7 +20,7 @@ Use this section directly when filling the official submission form.
 - **Which of the partner technologies have you used? (Counting as technologies to use):**
   - Deepmind (Gemini / Veo)
   - Tavily
-  - `TODO: add at least one more eligible partner tech if required by final compliance check`
+  - Gradium (manual voiceover add-on)
 - **Which track are you competing in?** Hera – AI Agents for Video Generation
 - **Which Side challenge(s) are you competing in?** `TODO`
 - **Terms & Conditions:** I agree
@@ -93,6 +93,10 @@ HERA_API_KEY=
 
 # Tavily search
 TAVILY_API_KEY=
+
+# Gradium voiceover add-on
+GRADIUM_API_KEY=
+GRADIUM_VOICE_ID=
 ```
 
 Runtime behavior when keys are missing:
@@ -104,6 +108,8 @@ Runtime behavior when keys are missing:
   - Returns mock payload when Tavily is missing or request fails.
 - `/api/campaign/generate`
   - Returns `503` when Gemini is not configured.
+- `/api/campaign/voiceover`
+  - Returns `503` when Gradium is not configured.
 - Context extraction/packing endpoints depend on Supabase env values.
 
 ### 3. Run locally
@@ -134,8 +140,20 @@ It creates required persistence and storage resources, including:
 - `POST /api/context/extract`
 - `POST /api/context/pack`
 - `POST /api/campaign/generate`
+- `POST /api/campaign/voiceover`
 - `DELETE /api/campaign/generate`
 - `POST /api/templates/apply`
+
+## Gradium Voiceover Add-On
+
+Manual voiceover generation is available in Step 3 result cards for completed video outputs.
+
+1. Click **Add voiceover** on a video card.
+2. Enter or edit narration text.
+3. Click **Generate voiceover** to create audio.
+4. Preview with the built-in audio player and use **Download** for manual editing workflows.
+
+This is intentionally isolated from the Veo generation path and does not alter video generation behavior.
 
 ## Project Structure
 

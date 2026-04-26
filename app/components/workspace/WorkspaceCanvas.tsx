@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ImageIcon, Sparkles, Video, Plus, Paperclip, Globe, Library, RefreshCw, Code2, X, Trash2, Download } from 'lucide-react';
+import { ImageIcon, Sparkles, Video, Plus, Paperclip, Globe, Library, RefreshCw, Code2, X, Trash2, Download, Volume2 } from 'lucide-react';
 import {
   Background,
   BackgroundVariant,
@@ -21,7 +21,7 @@ import { CanvasCardNode } from './nodes/CanvasCardNode';
 import { contentTemplates } from '../../lib/templates/catalog';
 import type { WorkspaceContextPack } from '../../lib/context/workspace-context';
 import type { ContentTypeId, AspectRatioId, GeneratedContentRecord } from '../../lib/campaign/types';
-import { GENERATED_CONTENT_TABLE, GENERATED_CONTENT_BUCKET, WORKSPACE_ID } from '../../lib/supabase/constants';
+import { GENERATED_CONTENT_TABLE, WORKSPACE_ID } from '../../lib/supabase/constants';
 import { getSupabaseBrowserClient } from '../../lib/supabase/client';
 
 type GenerationJobStatus = 'queued' | 'generating' | 'done' | 'error';
@@ -38,6 +38,10 @@ type GenerationJob = {
   error?: string;
   isRefining?: boolean;
   refinePrompt?: string;
+  isAddingVoiceover?: boolean;
+  voiceoverPrompt?: string;
+  isGeneratingVoiceover?: boolean;
+  voiceoverError?: string;
 };
 
 const PLATFORM_META: Record<string, { name: string; color: string }> = {
@@ -316,7 +320,19 @@ export function WorkspaceCanvas() {
         );
       } else {
         setJobs((prev) =>
-          prev.map((j) => (j.jobId === job.jobId ? { ...j, status: 'done', result: json as GeneratedContentRecord, refinePrompt: '' } : j))
+          prev.map((j) =>
+            j.jobId === job.jobId
+              ? {
+                  ...j,
+                  status: 'done',
+                  result: json as GeneratedContentRecord,
+                  refinePrompt: '',
+                  isAddingVoiceover: false,
+                  isGeneratingVoiceover: false,
+                  voiceoverError: undefined,
+                }
+              : j,
+          )
         );
       }
     } catch (err) {
@@ -325,6 +341,70 @@ export function WorkspaceCanvas() {
       );
     }
   }, [contextPack]);
+
+  const handleGenerateVoiceover = useCallback(async (job: GenerationJob) => {
+    if (!job.result || job.isGeneratingVoiceover) return;
+
+    const voiceoverText = job.voiceoverPrompt?.trim();
+    if (!voiceoverText) return;
+
+    setJobs((prev) =>
+      prev.map((j) =>
+        j.jobId === job.jobId
+          ? {
+              ...j,
+              isGeneratingVoiceover: true,
+              voiceoverError: undefined,
+            }
+          : j,
+      ),
+    );
+
+    try {
+      const response = await fetch('/api/campaign/voiceover', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          generatedContentId: job.result.id,
+          text: voiceoverText,
+        }),
+      });
+
+      const json = (await response.json()) as GeneratedContentRecord & { error?: string };
+
+      if (!response.ok) {
+        throw new Error(json.error ?? 'Voiceover generation failed');
+      }
+
+      setJobs((prev) =>
+        prev.map((j) =>
+          j.jobId === job.jobId
+            ? {
+                ...j,
+                result: json as GeneratedContentRecord,
+                isAddingVoiceover: false,
+                isGeneratingVoiceover: false,
+                voiceoverPrompt: voiceoverText,
+                voiceoverError: undefined,
+              }
+            : j,
+        ),
+      );
+    } catch (error) {
+      setJobs((prev) =>
+        prev.map((j) =>
+          j.jobId === job.jobId
+            ? {
+                ...j,
+                isGeneratingVoiceover: false,
+                voiceoverError:
+                  error instanceof Error ? error.message : 'Voiceover generation failed',
+              }
+            : j,
+        ),
+      );
+    }
+  }, []);
 
   const nodeTypes = useMemo(
     () => ({
@@ -635,7 +715,9 @@ export function WorkspaceCanvas() {
                     {jobs.map((job) => {
                       const meta = PLATFORM_META[job.platform] ?? { name: job.platform, color: '#64748b' };
                       const typeLabel = CONTENT_TYPE_LABELS[job.contentType] ?? job.contentType;
-                      const isVideo = job.result?.mime_type.startsWith('video/');
+                      const isVideo =
+                        job.result?.mime_type.startsWith('video/') || job.contentType === 'video';
+                      const hasVoiceover = Boolean(job.result?.voiceover_public_url);
 
                       return (
                         <div
@@ -761,14 +843,43 @@ export function WorkspaceCanvas() {
 
                           {job.status === 'done' && (
                             <div className="flex items-center justify-between border-t border-slate-100 px-4 py-2">
-                              <button
-                                type="button"
-                                onClick={() => setJobs(prev => prev.map(j => j.jobId === job.jobId ? { ...j, isRefining: true } : j))}
-                                className="flex items-center gap-1.5 rounded-lg py-1.5 text-xs font-bold text-slate-500 transition hover:text-slate-900"
-                              >
-                                <RefreshCw className="size-3" />
-                                Refine
-                              </button>
+                              <div className="flex items-center gap-3">
+                                <button
+                                  type="button"
+                                  onClick={() => setJobs(prev => prev.map(j => j.jobId === job.jobId ? { ...j, isRefining: true } : j))}
+                                  className="flex items-center gap-1.5 rounded-lg py-1.5 text-xs font-bold text-slate-500 transition hover:text-slate-900"
+                                >
+                                  <RefreshCw className="size-3" />
+                                  Refine
+                                </button>
+                                {isVideo ? (
+                                  <button
+                                    type="button"
+                                    onClick={() =>
+                                      setJobs((prev) =>
+                                        prev.map((j) =>
+                                          j.jobId === job.jobId
+                                            ? {
+                                                ...j,
+                                                isAddingVoiceover: true,
+                                                voiceoverPrompt:
+                                                  j.voiceoverPrompt ??
+                                                  j.result?.voiceover_text ??
+                                                  j.result?.prompt ??
+                                                  '',
+                                                voiceoverError: undefined,
+                                              }
+                                            : j,
+                                        ),
+                                      )
+                                    }
+                                    className="flex items-center gap-1.5 rounded-lg py-1.5 text-xs font-bold text-slate-500 transition hover:text-slate-900"
+                                  >
+                                    <Volume2 className="size-3" />
+                                    {hasVoiceover ? 'Update voiceover' : 'Add voiceover'}
+                                  </button>
+                                ) : null}
+                              </div>
                               <button
                                 type="button"
                                 onClick={() => handleDeleteResult(job)}
@@ -779,6 +890,91 @@ export function WorkspaceCanvas() {
                               </button>
                             </div>
                           )}
+
+                          {job.status === 'done' && isVideo && (job.isAddingVoiceover || hasVoiceover || job.voiceoverError) ? (
+                            <div className="border-t border-slate-100 bg-slate-50/50 px-4 py-3">
+                              {job.isAddingVoiceover ? (
+                                <div className="space-y-2">
+                                  <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                                    Gradium voiceover script
+                                  </p>
+                                  <textarea
+                                    value={job.voiceoverPrompt ?? ''}
+                                    onChange={(e) =>
+                                      setJobs((prev) =>
+                                        prev.map((j) =>
+                                          j.jobId === job.jobId
+                                            ? { ...j, voiceoverPrompt: e.target.value }
+                                            : j,
+                                        ),
+                                      )
+                                    }
+                                    placeholder="Write narration text..."
+                                    className="min-h-[86px] w-full resize-none rounded-xl border border-slate-200 bg-white p-2 text-xs text-slate-700 outline-none focus:border-slate-300"
+                                  />
+                                  <div className="flex justify-end gap-2">
+                                    <button
+                                      type="button"
+                                      onClick={() =>
+                                        setJobs((prev) =>
+                                          prev.map((j) =>
+                                            j.jobId === job.jobId
+                                              ? { ...j, isAddingVoiceover: false, voiceoverError: undefined }
+                                              : j,
+                                          ),
+                                        )
+                                      }
+                                      className="rounded-lg px-2 py-1 text-[10px] font-bold text-slate-400 hover:text-slate-600"
+                                    >
+                                      Cancel
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => handleGenerateVoiceover(job)}
+                                      disabled={!job.voiceoverPrompt?.trim() || job.isGeneratingVoiceover}
+                                      className="rounded-lg bg-slate-900 px-3 py-1 text-[10px] font-bold text-white transition hover:bg-slate-800 disabled:opacity-50"
+                                    >
+                                      {job.isGeneratingVoiceover ? 'Generating…' : 'Generate voiceover'}
+                                    </button>
+                                  </div>
+                                </div>
+                              ) : null}
+
+                              {hasVoiceover ? (
+                                <div className={job.isAddingVoiceover ? 'mt-3' : ''}>
+                                  <div className="mb-2 flex items-center justify-between gap-2">
+                                    <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                                      Voiceover preview
+                                    </p>
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        const ext = job.result?.voiceover_mime_type?.includes('ogg') ? 'ogg' : 'wav';
+                                        handleDownload(
+                                          job.result!.voiceover_public_url!,
+                                          `${job.platform}-${job.contentType}-voiceover.${ext}`,
+                                        );
+                                      }}
+                                      className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-white px-2 py-1 text-[10px] font-semibold text-slate-600 transition hover:border-slate-300 hover:text-slate-900"
+                                    >
+                                      <Download className="size-3" />
+                                      Download
+                                    </button>
+                                  </div>
+                                  <audio
+                                    controls
+                                    preload="metadata"
+                                    className="w-full"
+                                    src={job.result!.voiceover_public_url ?? undefined}
+                                  />
+                                </div>
+                              ) : null}
+
+                              {job.voiceoverError ? (
+                                <p className="mt-2 text-[11px] font-medium text-red-500">{job.voiceoverError}</p>
+                              ) : null}
+                            </div>
+                          ) : null}
                         </div>
                       );
                     })}

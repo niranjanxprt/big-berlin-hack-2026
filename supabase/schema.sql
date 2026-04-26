@@ -195,6 +195,11 @@ create table if not exists public.generated_content (
   template_id text,
   audience text,
   aspect_ratio text,
+  voiceover_storage_path text,
+  voiceover_public_url text,
+  voiceover_mime_type text,
+  voiceover_text text,
+  voiceover_voice_id text,
   created_at timestamptz not null default timezone('utc', now())
 );
 
@@ -216,3 +221,10 @@ create policy "generated-content: public insert"
 create policy "generated-content: public delete"
   on storage.objects for delete
   using (bucket_id = 'generated-content');
+
+alter table if exists public.generated_content
+  add column if not exists voiceover_storage_path text,
+  add column if not exists voiceover_public_url text,
+  add column if not exists voiceover_mime_type text,
+  add column if not exists voiceover_text text,
+  add column if not exists voiceover_voice_id text;

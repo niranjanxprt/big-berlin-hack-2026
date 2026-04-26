@@ -350,9 +350,20 @@ export async function generateAndStoreCampaignContent(input: {
 export async function deleteGeneratedContent(id: string, storagePath: string): Promise<void> {
   const supabase = getSupabaseServerClient();
 
+  const { data: existingRecord } = await supabase
+    .from(GENERATED_CONTENT_TABLE)
+    .select('voiceover_storage_path')
+    .eq('id', id)
+    .single<{ voiceover_storage_path: string | null }>();
+
+  const pathsToDelete = [storagePath];
+  if (existingRecord?.voiceover_storage_path) {
+    pathsToDelete.push(existingRecord.voiceover_storage_path);
+  }
+
   const { error: storageError } = await supabase.storage
     .from(GENERATED_CONTENT_BUCKET)
-    .remove([storagePath]);
+    .remove(pathsToDelete);
 
   if (storageError) throw storageError;
 
