@@ -2,44 +2,23 @@
 
 **Live App:** https://virallforge.vercel.app/
 
-## Big Berlin Hack - Submission
+## Hackathon Context
 
-This repository is prepared for **Big Berlin Hack** submission and includes the required technical documentation, setup steps, API references, and submission-ready project details.
+- Event: **Big Berlin Hack**
+- Track: **Hera - AI Agents for Video Generation**
+- Public repo: https://github.com/fabienstrauss/big-berlin-hack-2026
 
-## Submission Snapshot
+## Partner Technologies Used
 
-Use this section directly when filling the official submission form.
+Technologies counted for submission:
 
-- **Team Name:** VirallForge
-- **All Team Members (Name + Email):** `TODO`
-- **What are you building?**
-  - VirallForge is an AI-assisted social content engine for generating scroll-stopping campaign assets.
-  - It combines research context, template-driven strategy, and multimodal generation (image/video/animation) into one workspace.
-- **GitHub Repo (Must be public):** https://github.com/fabienstrauss/big-berlin-hack-2026
-- **Demo Video Link (Loom Preferred):** `TODO`
-- **Which of the partner technologies have you used? (Counting as technologies to use):**
-  - Deepmind (Gemini / Veo)
-  - Tavily
-  - Gradium (manual voiceover add-on)
-- **Which track are you competing in?** Hera – AI Agents for Video Generation
-- **Which Side challenge(s) are you competing in?** `TODO`
-- **Terms & Conditions:** I agree
+- **Google DeepMind (Gemini / Veo)** for image and video generation
+- **Tavily** for live web research and reference extraction
+- **Gradium** for optional manual text-to-speech voiceover generation
 
-## Hackathon Requirements Checklist
+Additional integrated generation provider:
 
-- [ ] Project submitted before **Sunday 14:00**
-- [ ] Team size is max 5 members
-- [ ] At least 3 required partner technologies are used
-- [ ] Public GitHub repository included in submission
-- [ ] 2-minute video demo link included in submission
-- [ ] README includes setup + technical documentation
-
-## Important Links
-
-- Discord: https://discord.gg/d4HJCNF54x
-- Project Submission Form: https://forms.techeurope.io/bbh-submission
-- Viral Video Content Challenge: https://forms.techeurope.io/bbh/content-challenge
-- Venue: https://maps.app.goo.gl/mKxJ5hJ715cDv6Ju5
+- **Hera** for animation outputs
 
 ## Product Overview
 
