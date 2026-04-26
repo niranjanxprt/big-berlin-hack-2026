@@ -37,7 +37,7 @@ export function TopNavigation({
 }: TopNavigationProps) {
   const steps = [
     { id: 1, label: 'BRAINSTORMING' },
-    { id: 2, label: 'CHOICE' },
+    { id: 2, label: 'PLATFORM' },
     { id: 3, label: 'GENERATING' },
   ];
 

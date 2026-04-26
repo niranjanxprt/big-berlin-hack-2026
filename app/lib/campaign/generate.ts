@@ -135,7 +135,7 @@ async function generateImageBytes(
 async function generateVideoBytes(
   prompt: string,
   aspectRatio: AspectRatioId,
-  referenceVideoUrl?: string,
+  referenceImageUrl?: string,
 ): Promise<{ bytes: Uint8Array }> {
   const apiKey = getApiKey();
 
@@ -150,11 +150,27 @@ async function generateVideoBytes(
   };
 
   const instance: any = { prompt };
-  
-  if (referenceVideoUrl) {
-    console.log(`[generate] Video reference provided: ${referenceVideoUrl}. Note: Veo 3.1 fast usually uses this as a style/concept anchor via the prompt or specific multimodal fields.`);
-    // For many Veo preview APIs, we include the reference info in the prompt 
-    // or as a specific input instance if the model version supports it.
+
+  if (referenceImageUrl) {
+    try {
+      console.log(`[generate] Fetching reference image for Veo referenceImages: ${referenceImageUrl}`);
+      const imgRes = await fetch(referenceImageUrl);
+      if (imgRes.ok) {
+        const imgBuffer = await imgRes.arrayBuffer();
+        instance.referenceImages = [
+          {
+            referenceType: 'asset',
+            image: {
+              bytesBase64Encoded: Buffer.from(imgBuffer).toString('base64'),
+              mimeType: imgRes.headers.get('content-type') || 'image/jpeg',
+            },
+          },
+        ];
+        console.log(`[generate] Reference image attached as referenceImages (style anchor)`);
+      }
+    } catch (e) {
+      console.warn(`[generate] Failed to fetch reference image for Veo, proceeding without:`, e);
+    }
   }
 
   console.log(`[generate] → Veo video request (${GEMINI_VEO_MODEL}, ${toApiAspectRatio(aspectRatio)})`);
@@ -230,28 +246,28 @@ export async function generateAndStoreCampaignContent(input: {
   console.log(`[generate] Starting ${input.contentType} generation for ${input.platform}`);
 
   if (isVideo) {
-    // Pick exactly one reference video URL based on priority
-    let referenceVideoUrl: string | undefined;
+    // Pick a reference image for Veo (any image; Veo uses it as a visual anchor)
+    let referenceImageUrl: string | undefined;
 
-    // 1. Refine reference (highest priority if refining)
-    if (input.refineReferenceUrl && input.refineReferenceUrl.includes('.mp4')) {
-      referenceVideoUrl = input.refineReferenceUrl;
+    // 1. Refine reference (highest priority — the previously generated video frame)
+    if (input.refineReferenceUrl) {
+      referenceImageUrl = input.refineReferenceUrl;
     }
-    // 2. Primary product reference (if it happens to be a video, unlikely but possible)
-    else if (input.primaryReferenceUrl && input.primaryReferenceUrl.includes('.mp4')) {
-      referenceVideoUrl = input.primaryReferenceUrl;
+    // 2. Product reference photo (most useful for brand consistency)
+    else if (input.primaryReferenceUrl) {
+      referenceImageUrl = input.primaryReferenceUrl;
     }
-    // 3. Workspace context videos
-    else if (input.contextPack?.videos?.length) {
-      const firstVideoNodeId = input.contextPack.videos[0].sourceNodeId;
-      const artifact = input.contextPack.sourceArtifacts.find(a => a.sourceNodeId === firstVideoNodeId);
-      const url = (artifact?.rawMetadata?.asset as any)?.previewUrl || input.contextPack.videos[0].title;
+    // 3. First workspace image from context pack
+    else if (input.contextPack?.images?.length) {
+      const firstImageNodeId = input.contextPack.images[0].sourceNodeId;
+      const artifact = input.contextPack.sourceArtifacts.find(a => a.sourceNodeId === firstImageNodeId);
+      const url = (artifact?.rawMetadata?.asset as any)?.previewUrl;
       if (url && url.startsWith('http')) {
-        referenceVideoUrl = url;
+        referenceImageUrl = url;
       }
     }
 
-    const { bytes } = await generateVideoBytes(input.prompt, input.aspectRatio, referenceVideoUrl);
+    const { bytes } = await generateVideoBytes(input.prompt, input.aspectRatio, referenceImageUrl);
     console.log(`[generate] Uploading video to storage…`);
     const uploaded = await uploadToGeneratedBucket({
       bytes,

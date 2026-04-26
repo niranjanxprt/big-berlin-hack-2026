@@ -792,7 +792,7 @@ export function WorkspaceCanvas() {
               <button
                 type="button"
                 onClick={() => setShowContextDebug(true)}
-                className="absolute bottom-8 left-1/2 -translate-x-1/2 flex items-center gap-1.5 rounded-full border border-slate-200/60 bg-white/50 px-3 py-1.5 text-[11px] font-medium text-slate-400 shadow-sm backdrop-blur-sm transition hover:border-slate-300 hover:bg-white/80 hover:text-slate-600"
+                className="absolute bottom-8 left-1/2 z-30 -translate-x-1/2 flex items-center gap-1.5 rounded-full border border-slate-200/60 bg-white/50 px-3 py-1.5 text-[11px] font-medium text-slate-400 shadow-sm backdrop-blur-sm transition hover:border-slate-300 hover:bg-white/80 hover:text-slate-600"
               >
                 <Code2 className="size-3" />
                 context inspector

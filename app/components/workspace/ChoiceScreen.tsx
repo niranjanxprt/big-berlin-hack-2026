@@ -469,49 +469,48 @@ export function ChoiceScreen({ onComplete, initialConfig, onConfigChange }: Choi
       {/* Product Reference Section */}
       <div className="mb-10">
         <h2 className="mb-1 text-lg font-bold text-slate-900">Your Product</h2>
-        <p className="mb-5 text-sm text-slate-500">
-          Upload a high-quality photo of your product. This will be used as a visual anchor for all generations.
+        <p className="mb-4 text-sm text-slate-500">
+          Upload a reference photo used as a visual anchor for all generations.
         </p>
-        
-        <div 
-          className="group relative flex aspect-video w-full cursor-pointer flex-col items-center justify-center overflow-hidden rounded-[28px] border-2 border-dashed border-slate-200 bg-slate-50 transition hover:border-slate-300 hover:bg-slate-100/50"
+
+        <div
+          className="group relative flex h-20 cursor-pointer items-center gap-4 overflow-hidden rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 transition hover:border-slate-300 hover:bg-slate-100/50"
           onClick={() => !productReferenceUrl && fileInputRef.current?.click()}
         >
           {productReferenceUrl ? (
             <>
-              <img 
-                src={productReferenceUrl} 
-                className="h-full w-full object-cover" 
-                alt="Product Reference" 
+              <img
+                src={productReferenceUrl}
+                className="h-14 w-14 shrink-0 rounded-xl object-cover shadow-sm"
+                alt="Product Reference"
               />
-              <div className="absolute inset-0 flex items-center justify-center bg-black/20 opacity-0 transition group-hover:opacity-100">
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setProductReferenceUrl(undefined);
-                  }}
-                  className="flex size-12 items-center justify-center rounded-full bg-white text-red-500 shadow-xl transition hover:scale-110"
-                >
-                  <Trash2 className="size-5" />
-                </button>
-              </div>
+              <p className="flex-1 text-sm font-medium text-slate-600">Product reference uploaded</p>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setProductReferenceUrl(undefined);
+                }}
+                className="flex size-8 shrink-0 items-center justify-center rounded-full text-slate-300 transition hover:bg-red-50 hover:text-red-400"
+              >
+                <Trash2 className="size-4" />
+              </button>
             </>
           ) : (
-            <div className="flex flex-col items-center gap-3">
-              <div className="flex size-12 items-center justify-center rounded-full bg-white text-slate-400 shadow-sm">
-                {isUploading ? <LoaderCircle className="size-5 animate-spin" /> : <Upload className="size-5" />}
+            <>
+              <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-white text-slate-400 shadow-sm">
+                {isUploading ? <LoaderCircle className="size-4 animate-spin" /> : <Upload className="size-4" />}
               </div>
-              <p className="text-sm font-semibold text-slate-600">
-                {isUploading ? 'Uploading your product...' : 'Click to upload product photo'}
+              <p className="text-sm font-medium text-slate-500">
+                {isUploading ? 'Uploading…' : 'Click to upload product photo'}
               </p>
-            </div>
+            </>
           )}
-          <input 
-            type="file" 
-            ref={fileInputRef} 
-            className="hidden" 
-            accept="image/*" 
-            onChange={handleProductImageUpload} 
+          <input
+            type="file"
+            ref={fileInputRef}
+            className="hidden"
+            accept="image/*"
+            onChange={handleProductImageUpload}
           />
         </div>
       </div>
