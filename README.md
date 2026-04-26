@@ -25,11 +25,27 @@ Additional integrated generation provider:
 VirallForge provides a canvas-based workflow for creating and refining campaign content:
 
 - Build ideas visually in a workspace canvas.
-- Choose platform, audience, content type, and template.
+- Configure platform, audience, content type, and template for:
+  - Instagram
+  - TikTok
+  - LinkedIn
+  - X / Twitter
+  - YouTube
+- Select output formats:
+  - Content types: Short Video, Image
+  - Aspect ratios: Vertical (9:16), Square (1:1), Horizontal (16:9)
+  - Template selection per content type
 - Generate image/video concepts with Gemini (Nano Banana + Veo).
 - Generate animation clips with Hera.
 - Pull live research snippets and reference images via Tavily.
+- Enrich generation inputs with external Tavily context through context extraction and context pack flows.
 - Extract and merge workspace context for downstream campaign generation.
+
+## Product Next Steps (Planned)
+
+- Automatic thumbnail generation for generated video content.
+- Hashtag recommendation generation per platform and audience.
+- Performance dashboard to monitor post-level and campaign-level outcomes.
 
 ## Tech Stack
 
