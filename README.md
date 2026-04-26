@@ -15,7 +15,7 @@ Use this section directly when filling the official submission form.
 - **What are you building?**
   - VirallForge is an AI-assisted social content engine for generating scroll-stopping campaign assets.
   - It combines research context, template-driven strategy, and multimodal generation (image/video/animation) into one workspace.
-- **GitHub Repo (Must be public):** https://github.com/niranjanxprt/big-berlin-hack-2026
+- **GitHub Repo (Must be public):** https://github.com/fabienstrauss/big-berlin-hack-2026
 - **Demo Video Link (Loom Preferred):** `TODO`
 - **Which of the partner technologies have you used? (Counting as technologies to use):**
   - Deepmind (Gemini / Veo)
