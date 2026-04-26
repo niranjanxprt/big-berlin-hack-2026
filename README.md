@@ -2,6 +2,8 @@
 
 **Live App:** https://virallforge.vercel.app/
 
+![VirallForge Workspace](docs/images/virallforge-workspace.png)
+
 ## Hackathon Context
 
 - Event: **Big Berlin Hack**
