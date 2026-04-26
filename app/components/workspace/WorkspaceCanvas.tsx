@@ -279,6 +279,20 @@ export function WorkspaceCanvas() {
     );
 
     try {
+      // Auto-fetch context if missing (e.g. after page reload)
+      let pack = contextPack;
+      if (!pack) {
+        const ctxRes = await fetch('/api/context/pack', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ workspaceId: WORKSPACE_ID }),
+        });
+        const ctxJson = (await ctxRes.json()) as { contextPack?: WorkspaceContextPack; error?: string };
+        if (!ctxRes.ok || !ctxJson.contextPack) throw new Error(ctxJson.error ?? 'Failed to extract context');
+        pack = ctxJson.contextPack;
+        setContextPack(pack);
+      }
+
       const res = await fetch('/api/campaign/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -288,10 +302,10 @@ export function WorkspaceCanvas() {
           audience: job.audience,
           aspectRatio: job.aspectRatio,
           templateId: job.templateId,
-          contextPack: contextPack, // reuse existing context pack
+          contextPack: pack,
           refinePrompt: job.refinePrompt,
-          referenceAsset: job.result, // Send the current result as reference
-          existingId: job.result?.id, // Pass existing ID for overwrite
+          referenceAsset: job.result,
+          existingId: job.result?.id,
         }),
       });
 
@@ -305,9 +319,9 @@ export function WorkspaceCanvas() {
           prev.map((j) => (j.jobId === job.jobId ? { ...j, status: 'done', result: json as GeneratedContentRecord, refinePrompt: '' } : j))
         );
       }
-    } catch {
+    } catch (err) {
       setJobs((prev) =>
-        prev.map((j) => (j.jobId === job.jobId ? { ...j, status: 'error', error: 'Network error' } : j))
+        prev.map((j) => (j.jobId === job.jobId ? { ...j, status: 'error', error: err instanceof Error ? err.message : 'Network error' } : j))
       );
     }
   }, [contextPack]);
@@ -1183,10 +1197,10 @@ export function WorkspaceCanvas() {
         </div>
       )}
 
-      {currentStep !== 3 ? (
+      {currentStep === 1 ? (
         <FloatingToolbar
           currentStep={currentStep}
-          actions={currentStep === 1 ? brainstormActions : choiceActions}
+          actions={brainstormActions}
         />
       ) : null}
     </div>

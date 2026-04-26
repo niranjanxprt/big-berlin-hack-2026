@@ -37,20 +37,20 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Invalid request body' }, { status: 400 });
   }
 
-  const basePrompt = buildMasterPrompt({
-    platform: body.platform,
-    contentType: body.contentType,
-    audience: body.audience,
-    aspectRatio: body.aspectRatio,
-    templateId: body.templateId,
-    contextPack: body.contextPack,
-  });
-
-  const prompt = body.refinePrompt 
-    ? `REFINE the following content based on this instruction: "${body.refinePrompt}"\n\nOriginal Concept Guidelines:\n${basePrompt}`
-    : basePrompt;
-
   try {
+    const basePrompt = buildMasterPrompt({
+      platform: body.platform,
+      contentType: body.contentType,
+      audience: body.audience,
+      aspectRatio: body.aspectRatio,
+      templateId: body.templateId,
+      contextPack: body.contextPack,
+    });
+
+    const prompt = body.refinePrompt
+      ? `REFINE the following content based on this instruction: "${body.refinePrompt}"\n\nOriginal Concept Guidelines:\n${basePrompt}`
+      : basePrompt;
+
     const result = await generateAndStoreCampaignContent({
       platform: body.platform,
       contentType: body.contentType,
@@ -59,17 +59,17 @@ export async function POST(request: Request) {
       templateId: body.templateId,
       prompt,
       contextPack: body.contextPack,
-      primaryReferenceUrl: body.contextPack.productReferenceUrl,
+      primaryReferenceUrl: body.contextPack?.productReferenceUrl,
       refineReferenceUrl: body.referenceAsset?.public_url,
       existingId: body.existingId,
+      existingStoragePath: body.referenceAsset?.storage_path,
     });
 
     return NextResponse.json(result);
   } catch (error) {
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Generation failed' },
-      { status: 500 },
-    );
+    const message = error instanceof Error ? error.message : String(error);
+    console.error('[campaign/generate] error:', message);
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }
 
