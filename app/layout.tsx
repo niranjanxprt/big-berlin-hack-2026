@@ -2,8 +2,8 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Social Content Lab",
-  description: "Prototype canvas for brainstorming social media content ideas.",
+  title: "VirallForge",
+  description: "VirallForge: AI-assisted social content workspace.",
 };
 
 export default function RootLayout({
