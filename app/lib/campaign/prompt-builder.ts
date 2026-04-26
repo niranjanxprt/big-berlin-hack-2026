@@ -59,8 +59,6 @@ ${template.description}
 Style direction: ${
         input.contentType === 'image'
           ? template.imagePrompt
-          : input.contentType === 'animation'
-          ? template.animationPrompt
           : template.videoPrompt
       }`
     : '';
@@ -116,5 +114,5 @@ ${templateSection}
 - Aspect ratio: ${aspectLabel}
 - Audience: ${audienceLabel}
 
-Produce a compelling ${input.contentType === 'animation' ? 'animated ' : ''}video. The visual reference concepts should be the PRIMARY guide for consistency. Keep it under 15 seconds.`.trim();
+Produce a compelling video. The visual reference concepts should be the PRIMARY guide for consistency. Keep it under 15 seconds.`.trim();
 }

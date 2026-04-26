@@ -218,8 +218,9 @@ export async function generateAndStoreCampaignContent(input: {
   primaryReferenceUrl?: string;
   refineReferenceUrl?: string;
   existingId?: string;
+  existingStoragePath?: string;
 }): Promise<GeneratedContentRecord> {
-  const isVideo = input.contentType === 'video' || input.contentType === 'animation';
+  const isVideo = input.contentType === 'video';
   const prefix = `${input.platform}-${input.contentType}`;
 
   let storagePath: string;
@@ -296,10 +297,18 @@ export async function generateAndStoreCampaignContent(input: {
     mimeType = imgMime;
   }
 
-  console.log(`[generate] Saving record to DB…`);
   const supabase = getSupabaseServerClient();
-  
-  const payload: any = {
+
+  // When refining: clean up old storage file and DB record before inserting fresh
+  if (input.existingId) {
+    if (input.existingStoragePath) {
+      try { await supabase.storage.from(GENERATED_CONTENT_BUCKET).remove([input.existingStoragePath]); } catch {}
+    }
+    try { await supabase.from(GENERATED_CONTENT_TABLE).delete().eq('id', input.existingId); } catch {}
+  }
+
+  console.log(`[generate] Saving record to DB…`);
+  const payload = {
     workspace_id: WORKSPACE_ID,
     platform: input.platform,
     content_type: input.contentType,
@@ -312,17 +321,13 @@ export async function generateAndStoreCampaignContent(input: {
     aspect_ratio: input.aspectRatio,
   };
 
-  if (input.existingId) {
-    payload.id = input.existingId;
-  }
-
   const { data, error } = await supabase
     .from(GENERATED_CONTENT_TABLE)
-    .upsert(payload)
+    .insert(payload)
     .select()
     .single<GeneratedContentRecord>();
 
-  if (error) throw error;
+  if (error) throw new Error(`DB insert failed: ${error.message}`);
   return data;
 }
 

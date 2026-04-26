@@ -140,6 +140,7 @@ const DEFAULT_PLATFORM_CONFIG = (): PlatformConfig => ({
 
 export type ChoiceConfig = {
   platforms: Partial<Record<PlatformId, PlatformConfig>>;
+  productReferenceUrl?: string;
 };
 
 type ChoiceScreenProps = {
